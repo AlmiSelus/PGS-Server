@@ -52,7 +52,9 @@ public class GameServer implements Runnable {
         try {
             checkServerRunning();
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
-            new PlayerThread(socket).start();
+            for(int i = 0; i < maxPlayersNum; ++i) {
+                new PlayerThread(socket, i).start();
+            }
             while(true){}
         } catch (Exception e) {
             log.error(e.getMessage()+". Closing...");
@@ -101,9 +103,11 @@ public class GameServer implements Runnable {
     class PlayerThread extends Thread {
         private ReliableServerSocket socket;
         private final Object lock = new Object();
+        private int pid;
 
-        public PlayerThread(ReliableServerSocket socket) {
+        public PlayerThread(ReliableServerSocket socket, int playerID) {
             this.socket = socket;
+            this.pid = playerID;
             setDaemon(true);
         }
 
