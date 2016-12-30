@@ -193,10 +193,12 @@ public class GameClient extends SimpleApplication {
                     GamePacket finalGamePacket = gamePacket;
                     client.enqueue(() -> {
                         blue.setLocalTranslation(finalGamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
-                        blue.setLocalRotation(new Quaternion(finalGamePacket.getxAngle(),
-                                finalGamePacket.getyAngle(),
-                                finalGamePacket.getzAngle(),
-                                finalGamePacket.getW()));
+                        blue.setLocalRotation(
+                                new Quaternion(
+                                        finalGamePacket.getxAngle(),
+                                        finalGamePacket.getyAngle(),
+                                        finalGamePacket.getzAngle(),
+                                        finalGamePacket.getW()));
                         return null;
                     });
                 }

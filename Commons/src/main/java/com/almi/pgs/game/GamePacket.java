@@ -34,7 +34,7 @@ public class GamePacket implements Serializable {
      */
     private byte playerID;
 
-    public GamePacket(float x, float y, float z, float w, float xAngle, float yAngle, float zAngle, byte team, byte playerID) {
+    public GamePacket(float x, float y, float z, float w, float xAngle, float yAngle, float zAngle) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -42,8 +42,6 @@ public class GamePacket implements Serializable {
         this.xAngle = xAngle;
         this.yAngle = yAngle;
         this.zAngle = zAngle;
-        this.team = team;
-        this.playerID = playerID;
     }
 
     public float getX() {
