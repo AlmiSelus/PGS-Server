@@ -79,7 +79,7 @@ public class GameClient extends SimpleApplication {
         rootNode.attachChild(blue);
         rootNode.attachChild(red);
 
-		assetManager.registerLocator(new File("assets").getAbsolutePath(), FileLocator.class);
+		assetManager.registerLocator(new File("Client/assets").getAbsolutePath(), FileLocator.class);
 
 		Spatial arena = assetManager.loadModel("arena.obj");
 		arena.setLocalScale(0.6f);
@@ -207,7 +207,7 @@ public class GameClient extends SimpleApplication {
 
         private void receive(InputStream is) throws Exception {
             byte[] buffer = new byte[1024];
-            GamePacket gamePacket;
+
             while(is.read(buffer) > 0) {
                 String serializedPacket = new String(buffer);
                 int beginIndex  = serializedPacket.indexOf("{");
@@ -216,7 +216,7 @@ public class GameClient extends SimpleApplication {
                 log.info(serializedPacket);
                 JsonReader reader = new JsonReader(new StringReader(serializedPacket));
                 reader.setLenient(true);
-                gamePacket = gson.fromJson(reader, GamePacket.class);
+                final GamePacket gamePacket = gson.fromJson(reader, GamePacket.class);
 
                 if(gamePacket != null) {
                     log.info("Test");
