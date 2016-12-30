@@ -127,9 +127,7 @@ public class GameClient extends SimpleApplication {
                         redRotation.getW(),
                         redRotation.getX(),
                         redRotation.getY(),
-                        redRotation.getZ(),
-                        (byte)1,
-                        (byte)2);
+                        redRotation.getZ());
                 String jsonToSend = gson.toJson(movementPacket);
                 log.info(jsonToSend);
                 try {
