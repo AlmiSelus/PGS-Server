@@ -6,18 +6,27 @@ import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import com.jme3.app.SimpleApplication;
+import com.jme3.asset.plugins.FileLocator;
 import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.input.controls.MouseButtonTrigger;
+import com.jme3.light.AmbientLight;
+import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.post.FilterPostProcessor;
+import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
+import com.jme3.shadow.DirectionalLightShadowFilter;
+import com.jme3.shadow.DirectionalLightShadowRenderer;
+import java.io.File;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.lwjgl.opengl.EXTAbgr;
 import org.slf4j.Logger;
@@ -69,6 +78,34 @@ public class GameClient extends SimpleApplication {
 
         rootNode.attachChild(blue);
         rootNode.attachChild(red);
+
+		assetManager.registerLocator(new File("assets").getAbsolutePath(), FileLocator.class);
+
+		Spatial arena = assetManager.loadModel("arena.obj");
+		arena.setLocalScale(0.6f);
+		arena.setLocalTranslation(0, -20, 0);
+		arena.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+		rootNode.attachChild(arena);
+
+		// directional light
+		DirectionalLight sun = new DirectionalLight();
+		sun.setDirection(new Vector3f(1f, -1f, 1f).normalizeLocal());
+		rootNode.addLight(sun);
+		final int SHADOWMAP_SIZE=1024;
+        DirectionalLightShadowRenderer dlsr = new DirectionalLightShadowRenderer(assetManager, SHADOWMAP_SIZE, 3);
+        dlsr.setLight(sun);
+        viewPort.addProcessor(dlsr);
+        DirectionalLightShadowFilter dlsf = new DirectionalLightShadowFilter(assetManager, SHADOWMAP_SIZE, 3);
+        dlsf.setLight(sun);
+        dlsf.setEnabled(true);
+        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
+        fpp.addFilter(dlsf);
+        viewPort.addProcessor(fpp);
+		AmbientLight al = new AmbientLight();
+		al.setColor(ColorRGBA.White.mult(1.3f));
+		rootNode.addLight(al);
+
+		flyCam.setMoveSpeed(20);
 
         initKeys();
         try {
@@ -154,7 +191,7 @@ public class GameClient extends SimpleApplication {
         public ReceiverThread(GameClient client) {
             this.client = client;
         }
-        
+
         @Override
         public void run() {
             try {
