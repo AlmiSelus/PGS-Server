@@ -28,6 +28,18 @@
         </dependency>
         <dependency>
             <groupId>com.jme3</groupId>
+            <artifactId>jme3-bullet</artifactId>
+            <version>${jme3.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jme3</groupId>
+            <artifactId>jme3-bullet-natives</artifactId>
+            <version>${jme3.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jme3</groupId>
             <artifactId>jme3-lwjgl</artifactId>
             <version>${jme3.version}</version>
         </dependency>
