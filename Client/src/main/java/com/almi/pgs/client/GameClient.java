@@ -12,6 +12,7 @@ import com.jme3.input.MouseInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.input.controls.MouseAxisTrigger;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
@@ -21,8 +22,11 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.scene.CameraNode;
 import com.jme3.scene.Geometry;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.control.CameraControl.ControlDirection;
 import com.jme3.scene.shape.Box;
 import com.jme3.shadow.DirectionalLightShadowFilter;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
@@ -81,31 +85,8 @@ public class GameClient extends SimpleApplication {
 
 		assetManager.registerLocator(new File("Client/assets").getAbsolutePath(), FileLocator.class);
 
-		Spatial arena = assetManager.loadModel("arena.obj");
-		arena.setLocalScale(0.6f);
-		arena.setLocalTranslation(0, -20, 0);
-		arena.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-		rootNode.attachChild(arena);
-
-		// directional light
-		DirectionalLight sun = new DirectionalLight();
-		sun.setDirection(new Vector3f(1f, -1f, 1f).normalizeLocal());
-		rootNode.addLight(sun);
-		final int SHADOWMAP_SIZE=1024;
-        DirectionalLightShadowRenderer dlsr = new DirectionalLightShadowRenderer(assetManager, SHADOWMAP_SIZE, 3);
-        dlsr.setLight(sun);
-        viewPort.addProcessor(dlsr);
-        DirectionalLightShadowFilter dlsf = new DirectionalLightShadowFilter(assetManager, SHADOWMAP_SIZE, 3);
-        dlsf.setLight(sun);
-        dlsf.setEnabled(true);
-        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
-        fpp.addFilter(dlsf);
-        viewPort.addProcessor(fpp);
-		AmbientLight al = new AmbientLight();
-		al.setColor(ColorRGBA.White.mult(1.3f));
-		rootNode.addLight(al);
-
-		flyCam.setMoveSpeed(20);
+		this.setLevel();
+		this.setLight();
 
         initKeys();
         try {
@@ -235,4 +216,33 @@ public class GameClient extends SimpleApplication {
         }
     }
 
+	private void setLevel() {
+		Spatial arena = assetManager.loadModel("arena.obj");
+		arena.setLocalScale(0.6f);
+		arena.setLocalTranslation(0, -20, 0);
+		arena.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+		rootNode.attachChild(arena);
+	}
+
+	private void setLight() {
+		DirectionalLight sun = new DirectionalLight();
+		sun.setDirection(new Vector3f(1f, -1f, 1f).normalizeLocal());
+		rootNode.addLight(sun);
+
+		final int SHADOWMAP_SIZE=1024;
+        DirectionalLightShadowRenderer dlsr = new DirectionalLightShadowRenderer(assetManager, SHADOWMAP_SIZE, 3);
+        dlsr.setLight(sun);
+        viewPort.addProcessor(dlsr);
+
+        DirectionalLightShadowFilter dlsf = new DirectionalLightShadowFilter(assetManager, SHADOWMAP_SIZE, 3);
+        dlsf.setLight(sun);
+        dlsf.setEnabled(true);
+        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
+        fpp.addFilter(dlsf);
+        viewPort.addProcessor(fpp);
+
+		AmbientLight al = new AmbientLight();
+		al.setColor(ColorRGBA.White.mult(1.3f));
+		rootNode.addLight(al);
+	}
 }
