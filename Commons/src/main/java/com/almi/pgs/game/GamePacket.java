@@ -19,6 +19,7 @@ public class GamePacket implements Serializable {
     /**
      * Rotation
      */
+    private float w;
     private float xAngle;
     private float yAngle;
     private float zAngle;
@@ -33,10 +34,11 @@ public class GamePacket implements Serializable {
      */
     private byte playerID;
 
-    public GamePacket(float x, float y, float z, float xAngle, float yAngle, float zAngle, byte team, byte playerID) {
+    public GamePacket(float x, float y, float z, float w, float xAngle, float yAngle, float zAngle, byte team, byte playerID) {
         this.x = x;
         this.y = y;
         this.z = z;
+        this.w = w;
         this.xAngle = xAngle;
         this.yAngle = yAngle;
         this.zAngle = zAngle;
@@ -82,5 +84,21 @@ public class GamePacket implements Serializable {
 
     public void setPlayerID(byte playerID) {
         this.playerID = playerID;
+    }
+
+    public float getW() {
+        return w;
+    }
+
+    public float getxAngle() {
+        return xAngle;
+    }
+
+    public float getyAngle() {
+        return yAngle;
+    }
+
+    public float getzAngle() {
+        return zAngle;
     }
 }

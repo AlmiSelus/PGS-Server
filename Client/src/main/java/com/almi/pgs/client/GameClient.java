@@ -13,6 +13,7 @@ import com.jme3.input.controls.KeyTrigger;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.shape.Box;
@@ -115,10 +116,11 @@ public class GameClient extends SimpleApplication {
                 }
 
                 Vector3f redTranslation = red.getWorldTranslation();
-                Vector3f redRotation    = red.getLocalTranslation();
+                Quaternion redRotation    = red.getWorldRotation();
                 GamePacket movementPacket = new GamePacket(redTranslation.getX(),
                         redTranslation.getY(),
                         redTranslation.getZ(),
+                        redRotation.getW(),
                         redRotation.getX(),
                         redRotation.getY(),
                         redRotation.getZ(),
