@@ -5,6 +5,7 @@ import com.almi.pgs.germancoding.rudp.ReliableServerSocket;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.almi.pgs.germancoding.rudp.ReliableSocketListener;
 import com.google.gson.Gson;
+import com.sun.xml.internal.bind.v2.runtime.reflect.opt.Const;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GameServer implements Runnable {
 
     private final static Logger log = LoggerFactory.getLogger(GameServer.class);
-    private final static int BUFFER_SIZE = 512;
 
     /**
      * Max number of players
@@ -49,8 +49,11 @@ public class GameServer implements Runnable {
     @Override
     public void run() {
         log.info("Starting server...");
+        log.info("Server listening on port " + Constants.PORT);
+        log.info("Max players set to " + maxPlayersNum);
         try {
             checkServerRunning();
+
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             for(int i = 0; i < maxPlayersNum; ++i) {
                 new PlayerThread(socket, i).start();

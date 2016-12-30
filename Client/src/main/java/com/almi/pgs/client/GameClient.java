@@ -147,8 +147,6 @@ public class GameClient extends SimpleApplication {
         os.flush();
     }
 
-
-
     private class ReceiverThread extends Thread {
 
         private final GameClient client;
@@ -163,19 +161,16 @@ public class GameClient extends SimpleApplication {
                 InputStream is = server.getInputStream();
                 log.info("In here");
                 while(true) {
-                    GamePacket packet = receive(is);
-                    if (packet != null) {
-                        log.info("Not null");
-                    }
+                    receive(is);
                 }
             } catch (Exception e) {
                 log.info(ExceptionUtils.getStackTrace(e));
             }
         }
 
-        private GamePacket receive(InputStream is) throws Exception {
+        private void receive(InputStream is) throws Exception {
             byte[] buffer = new byte[1024];
-            GamePacket gamePacket = null;
+            GamePacket gamePacket;
             while(is.read(buffer) > 0) {
                 String serializedPacket = new String(buffer);
                 int beginIndex  = serializedPacket.indexOf("{");
@@ -188,21 +183,18 @@ public class GameClient extends SimpleApplication {
 
                 if(gamePacket != null) {
                     log.info("Test");
-                    GamePacket finalGamePacket = gamePacket;
                     client.enqueue(() -> {
-                        blue.setLocalTranslation(finalGamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
+                        blue.setLocalTranslation(gamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
                         blue.setLocalRotation(
                                 new Quaternion(
-                                        finalGamePacket.getxAngle(),
-                                        finalGamePacket.getyAngle(),
-                                        finalGamePacket.getzAngle(),
-                                        finalGamePacket.getW()));
+                                        gamePacket.getxAngle(),
+                                        gamePacket.getyAngle(),
+                                        gamePacket.getzAngle(),
+                                        gamePacket.getW()));
                         return null;
                     });
                 }
             }
-            System.out.println("is null? " + Objects.isNull(gamePacket));
-            return gamePacket;
         }
     }
 
