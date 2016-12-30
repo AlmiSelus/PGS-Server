@@ -4,6 +4,7 @@ import com.almi.pgs.commons.Constants;
 import com.almi.pgs.game.GamePacket;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
 import com.jme3.app.SimpleApplication;
 import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
@@ -18,12 +19,17 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.shape.Box;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.lwjgl.opengl.EXTAbgr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringReader;
 import java.net.InetSocketAddress;
+import java.util.Objects;
+import java.util.concurrent.Callable;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -36,6 +42,7 @@ public class GameClient extends SimpleApplication {
     private Geometry blue;
     private Boolean isRunning = true;
     private ReliableSocket server;
+    private Gson gson = new Gson();
 
     public GameClient(String[] gameStringParams) {
 
@@ -71,12 +78,12 @@ public class GameClient extends SimpleApplication {
         } catch (IOException e) {
             log.error(ExceptionUtils.getStackTrace(e));
         }
+        new ReceiverThread(this).start();
     }
 
     @Override
     public void simpleUpdate(float tpf) {
-        // make the player rotate:
-        blue.rotate(0, 2*tpf, 0);
+
     }
 
     private void initKeys() {
@@ -84,19 +91,16 @@ public class GameClient extends SimpleApplication {
         inputManager.addMapping("Pause",  new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping("Left",   new KeyTrigger(KeyInput.KEY_J));
         inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_K));
-        inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE),
-                new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE), new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         // Add the names to the action listener.
         inputManager.addListener(actionListener,"Pause");
         inputManager.addListener(analogListener, "Left", "Right", "Rotate");
 
     }
 
-    private ActionListener actionListener = new ActionListener() {
-        public void onAction(String name, boolean keyPressed, float tpf) {
-            if (name.equals("Pause") && !keyPressed) {
-                isRunning = !isRunning;
-            }
+    private ActionListener actionListener = (name, keyPressed, tpf) -> {
+        if (name.equals("Pause") && !keyPressed) {
+            isRunning = !isRunning;
         }
     };
 
@@ -125,8 +129,7 @@ public class GameClient extends SimpleApplication {
                         redRotation.getY(),
                         redRotation.getZ(),
                         (byte)1,
-                        (byte)1);
-                Gson gson = new Gson();
+                        (byte)2);
                 String jsonToSend = gson.toJson(movementPacket);
                 log.info(jsonToSend);
                 try {
@@ -145,4 +148,62 @@ public class GameClient extends SimpleApplication {
         os.write(serializedData.getBytes());
         os.flush();
     }
+
+
+
+    private class ReceiverThread extends Thread {
+
+        private final GameClient client;
+
+        public ReceiverThread(GameClient client) {
+            this.client = client;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                InputStream is = server.getInputStream();
+                log.info("In here");
+                while(true) {
+                    GamePacket packet = receive(is);
+                    if (packet != null) {
+                        log.info("Not null");
+                    }
+                }
+            } catch (Exception e) {
+                log.info(ExceptionUtils.getStackTrace(e));
+            }
+        }
+
+        private GamePacket receive(InputStream is) throws Exception {
+            byte[] buffer = new byte[1024];
+            GamePacket gamePacket = null;
+            while(is.read(buffer) > 0) {
+                String serializedPacket = new String(buffer);
+                int beginIndex  = serializedPacket.indexOf("{");
+                int endIndex    = serializedPacket.indexOf("}", beginIndex);
+                serializedPacket = serializedPacket.substring(beginIndex, endIndex+1);
+                log.info(serializedPacket);
+                JsonReader reader = new JsonReader(new StringReader(serializedPacket));
+                reader.setLenient(true);
+                gamePacket = gson.fromJson(reader, GamePacket.class);
+
+                if(gamePacket != null) {
+                    log.info("Test");
+                    GamePacket finalGamePacket = gamePacket;
+                    client.enqueue(() -> {
+                        blue.setLocalTranslation(finalGamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
+                        blue.setLocalRotation(new Quaternion(finalGamePacket.getxAngle(),
+                                finalGamePacket.getyAngle(),
+                                finalGamePacket.getzAngle(),
+                                finalGamePacket.getW()));
+                        return null;
+                    });
+                }
+            }
+            System.out.println("is null? " + Objects.isNull(gamePacket));
+            return gamePacket;
+        }
+    }
+
 }

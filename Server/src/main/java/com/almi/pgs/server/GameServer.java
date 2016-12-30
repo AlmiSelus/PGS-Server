@@ -121,17 +121,30 @@ public class GameServer implements Runnable {
 
                 log.info("New Connection from " + clientAddress.getHostName() + ":" + clientAddress.getPort() + " Processing...");
 
-                InputStream is = clientSocket.getInputStream();
+                /**
+                 * Read from socket
+                 */
+                InputStream is  = clientSocket.getInputStream();
+                OutputStream os = clientSocket.getOutputStream();
                 byte[] buffer = new byte[1024];
-
                 synchronized (lock) {
                     while ((is.read(buffer)) > 0) {
                         String val = new String(buffer);
-                        String[] arr = val.split("}");
-                        System.out.println(val);
-                        System.out.println(arr[0]);
+                        int beginIndex   = val.indexOf("{");
+                        int endIndex     = val.indexOf("}", beginIndex);
+                        val = val.substring(beginIndex, endIndex+1);
+//                        String[] arr = val.split("}");
+                        log.info("Received = " + val);
+
+                        /**
+                         * Write to socket
+                         */
+                        os.write(val.getBytes());
+                        os.flush();
+                        log.info("Sent = " + val);
                     }
                 }
+
 
             } catch (IOException e) {
                 e.printStackTrace();
