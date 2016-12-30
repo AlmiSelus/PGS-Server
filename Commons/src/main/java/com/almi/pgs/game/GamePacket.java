@@ -9,16 +9,37 @@ import java.io.Serializable;
  */
 public class GamePacket implements Serializable {
 
+    /**
+     * Coordinates
+     */
     private float x;
     private float y;
     private float z;
+
+    /**
+     * Rotation
+     */
+    private float xAngle;
+    private float yAngle;
+    private float zAngle;
+
+    /**
+     * Team specific
+     */
     private byte team;
+
+    /**
+     * Player id - should be assigned by server
+     */
     private byte playerID;
 
-    public GamePacket(float x, float y, float z, byte team, byte playerID) {
+    public GamePacket(float x, float y, float z, float xAngle, float yAngle, float zAngle, byte team, byte playerID) {
         this.x = x;
         this.y = y;
         this.z = z;
+        this.xAngle = xAngle;
+        this.yAngle = yAngle;
+        this.zAngle = zAngle;
         this.team = team;
         this.playerID = playerID;
     }

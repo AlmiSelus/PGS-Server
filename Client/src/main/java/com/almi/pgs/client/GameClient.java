@@ -115,9 +115,13 @@ public class GameClient extends SimpleApplication {
                 }
 
                 Vector3f redTranslation = red.getWorldTranslation();
+                Vector3f redRotation    = red.getLocalTranslation();
                 GamePacket movementPacket = new GamePacket(redTranslation.getX(),
                         redTranslation.getY(),
                         redTranslation.getZ(),
+                        redRotation.getX(),
+                        redRotation.getY(),
+                        redRotation.getZ(),
                         (byte)1,
                         (byte)1);
                 Gson gson = new Gson();
