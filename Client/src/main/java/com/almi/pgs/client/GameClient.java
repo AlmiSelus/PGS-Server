@@ -53,9 +53,14 @@ public class GameClient extends SimpleApplication {
     private Boolean isRunning = false;
     private ReliableSocket server;
     private int id;
+    /**
+     * Packet manager manages all communication with server through ReliableSocket. Use this manager
+     * for sending data and add packet listeners to receive certain packet
+     */
     private PacketManager packetManager = new PacketManager();
     /**
-     * PlayerID - Player Geometry (if need arises - change value object type to whatever needed)
+     * PlayerID - Player Geometry (if need arises - change value object type to whatever needed).
+     * Current player does not have entry in this map!!! use other variables!
      */
     private Map<Integer, Geometry> playerSpatials = new HashMap<>();
 
