@@ -3,28 +3,19 @@ package com.almi.pgs.server;
 import com.almi.pgs.commons.Constants;
 import com.almi.pgs.germancoding.rudp.ReliableServerSocket;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
-import com.almi.pgs.germancoding.rudp.ReliableSocketListener;
-import com.google.gson.Gson;
-import com.sun.xml.internal.bind.v2.runtime.reflect.opt.Const;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
 import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collections;
 
 /**
  * Created by Almi on 2016-12-09.
  *
  * Game server logic.
  * Checking if server can be started on given port,
- * starting server,
- * incoming messages
+ * starting server
  */
 public class GameServer implements Runnable {
 
@@ -34,9 +25,6 @@ public class GameServer implements Runnable {
      * Max number of players
      */
     private int maxPlayersNum = 4;
-    private AtomicInteger playersCount = new AtomicInteger(0);
-    private List<PlayerOnServerThread> playersList = new ArrayList<>();
-    private ReliableSocket clientSocket;
 
     public GameServer() {
 
@@ -56,7 +44,8 @@ public class GameServer implements Runnable {
 
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             for(int i = 0; i < maxPlayersNum; ++i) {
-                new PlayerThread(socket, i).start();
+                ReliableSocket clientSocket = (ReliableSocket) socket.accept();
+                new PlayerThread(clientSocket, i, Collections.synchronizedList(new ArrayList<>())).start();
             }
             while(true){}
         } catch (Exception e) {
@@ -75,84 +64,6 @@ public class GameServer implements Runnable {
             if(socket != null) {
                 socket.close();
             }
-        }
-    }
-
-    private class SocketListener implements ReliableSocketListener {
-
-        @Override
-        public void packetSent() {
-            System.out.println("Lolz?");
-        }
-
-        @Override
-        public void packetRetransmitted() {
-
-            log.info("retransmitted");
-        }
-
-        @Override
-        public void packetReceivedInOrder() {
-            log.info("In order");
-        }
-
-        @Override
-        public void packetReceivedOutOfOrder() {
-            log.info("Out of order");
-        }
-
-    }
-
-    class PlayerThread extends Thread {
-        private ReliableServerSocket socket;
-        private final Object lock = new Object();
-        private int pid;
-
-        public PlayerThread(ReliableServerSocket socket, int playerID) {
-            this.socket = socket;
-            this.pid = playerID;
-            setDaemon(true);
-        }
-
-        @Override
-        public void run() {
-
-            try {
-                clientSocket = (ReliableSocket) socket.accept();
-                InetSocketAddress clientAddress = (InetSocketAddress) clientSocket.getRemoteSocketAddress();
-                clientSocket.addListener(new SocketListener());
-
-                log.info("New Connection from " + clientAddress.getHostName() + ":" + clientAddress.getPort() + " Processing...");
-
-                /**
-                 * Read from socket
-                 */
-                InputStream is  = clientSocket.getInputStream();
-                OutputStream os = clientSocket.getOutputStream();
-                byte[] buffer = new byte[1024];
-                synchronized (lock) {
-                    while ((is.read(buffer)) > 0) {
-                        String val = new String(buffer);
-                        int beginIndex   = val.indexOf("{");
-                        int endIndex     = val.indexOf("}", beginIndex);
-                        val = val.substring(beginIndex, endIndex+1);
-//                        String[] arr = val.split("}");
-                        log.info("Received = " + val);
-
-                        /**
-                         * Write to socket
-                         */
-                        os.write(val.getBytes());
-                        os.flush();
-                        log.info("Sent = " + val);
-                    }
-                }
-
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
         }
     }
 

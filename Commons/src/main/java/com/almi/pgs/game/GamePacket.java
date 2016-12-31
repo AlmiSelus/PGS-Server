@@ -7,7 +7,7 @@ import java.io.Serializable;
  *
  * Simple game packet representing user movement
  */
-public class GamePacket implements Serializable {
+public class GamePacket implements Serializable, Packet {
 
     /**
      * Coordinates

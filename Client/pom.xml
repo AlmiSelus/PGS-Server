@@ -16,6 +16,8 @@
     </properties>
 
     <dependencies>
+
+        <!-- Core JME3 -->
         <dependency>
             <groupId>com.jme3</groupId>
             <artifactId>jme3-core</artifactId>
@@ -31,18 +33,23 @@
             <artifactId>jme3-bullet</artifactId>
             <version>${jme3.version}</version>
         </dependency>
-
         <dependency>
             <groupId>com.jme3</groupId>
             <artifactId>jme3-bullet-natives</artifactId>
             <version>${jme3.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.jme3</groupId>
+            <artifactId>jme3-niftygui</artifactId>
+            <version>${jme3.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.jme3</groupId>
             <artifactId>jme3-lwjgl</artifactId>
             <version>${jme3.version}</version>
         </dependency>
+
+        <!-- Commons -->
         <dependency>
             <groupId>com.almi.pgs</groupId>
             <artifactId>Commons</artifactId>

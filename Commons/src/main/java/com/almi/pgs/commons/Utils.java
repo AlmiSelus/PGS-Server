@@ -15,4 +15,14 @@ public class Utils {
         }
         return Optional.empty();
     }
+
+    public static String stripJson(String json) throws Exception {
+        try {
+            int beginIndex = json.indexOf("{");
+            int endIndex = json.indexOf("}", beginIndex);
+            return json.substring(beginIndex, json.indexOf("}", endIndex + 1) + 1);
+        } catch(StringIndexOutOfBoundsException e) {
+            throw new Exception();
+        }
+    }
 }

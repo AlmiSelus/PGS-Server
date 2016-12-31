@@ -1,10 +1,9 @@
 package com.almi.pgs.client;
 
 import com.almi.pgs.commons.Constants;
-import com.almi.pgs.game.GamePacket;
+import com.almi.pgs.game.*;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.google.gson.Gson;
-import com.google.gson.stream.JsonReader;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.plugins.FileLocator;
 import com.jme3.input.KeyInput;
@@ -28,17 +27,15 @@ import com.jme3.shadow.DirectionalLightShadowFilter;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
 import java.io.File;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.lwjgl.opengl.EXTAbgr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.StringReader;
 import java.net.InetSocketAddress;
-import java.util.Objects;
-import java.util.concurrent.Callable;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -49,12 +46,17 @@ public class GameClient extends SimpleApplication {
 
     private Geometry red;
     private Geometry blue;
-    private Boolean isRunning = true;
+    private Boolean isRunning = false;
     private ReliableSocket server;
-    private Gson gson = new Gson();
+    private int id;
+    private PacketManager packetManager = new PacketManager();
+    /**
+     * PlayerID - Player Geometry (if need arises - change value object type to whatever needed)
+     */
+    private Map<Integer, Geometry> playerSpatials = new HashMap<>();
 
     public GameClient(String[] gameStringParams) {
-
+        packetManager.addPacketListener(new ClientGamePacketListener(this));
     }
 
     @Override
@@ -115,7 +117,7 @@ public class GameClient extends SimpleApplication {
         } catch (IOException e) {
             log.error(ExceptionUtils.getStackTrace(e));
         }
-        new ReceiverThread(this).start();
+        new ReceiverThread().start();
     }
 
     @Override
@@ -125,13 +127,14 @@ public class GameClient extends SimpleApplication {
 
     private void initKeys() {
         // You can map one or several inputs to one named action
+        inputManager.addMapping("Login",  new KeyTrigger(KeyInput.KEY_G));
         inputManager.addMapping("Pause",  new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping("Left",   new KeyTrigger(KeyInput.KEY_J));
         inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_K));
         inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE), new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         // Add the names to the action listener.
         inputManager.addListener(actionListener,"Pause");
-        inputManager.addListener(analogListener, "Left", "Right", "Rotate");
+        inputManager.addListener(analogListener, "Login", "Left", "Right", "Rotate");
 
     }
 
@@ -141,6 +144,7 @@ public class GameClient extends SimpleApplication {
         }
     };
 
+    private boolean isLoginRequestSent = false;
     private AnalogListener analogListener = new AnalogListener() {
         public void onAnalog(String name, float value, float tpf) {
             if (isRunning) {
@@ -165,31 +169,26 @@ public class GameClient extends SimpleApplication {
                         redRotation.getX(),
                         redRotation.getY(),
                         redRotation.getZ());
-                String jsonToSend = gson.toJson(movementPacket);
-                log.info(jsonToSend);
-                try {
-                    send(jsonToSend);
-                } catch (Exception e) {
-                    log.info(ExceptionUtils.getStackTrace(e));
-                }
+                packetManager.sendPacket(server, movementPacket);
             } else {
-                System.out.println("Press P to unpause.");
+                if(name.equals("Login")) {
+                    if(!isLoginRequestSent) {
+                        AuthPacket authPacket = new AuthPacket("user1", "password1");
+                        packetManager.sendPacket(server, authPacket);
+                        log.info("Packet sent");
+                        isLoginRequestSent = true;
+                        isRunning = true;
+                    }
+                } else {
+                    System.out.println("Press P to unpause.");
+                }
             }
         }
     };
 
-    private void send(String serializedData) throws Exception {
-        OutputStream os = server.getOutputStream();
-        os.write(serializedData.getBytes());
-        os.flush();
-    }
-
     private class ReceiverThread extends Thread {
 
-        private final GameClient client;
-
-        public ReceiverThread(GameClient client) {
-            this.client = client;
+        public ReceiverThread() {
         }
 
         @Override
@@ -201,6 +200,7 @@ public class GameClient extends SimpleApplication {
                     receive(is);
                 }
             } catch (Exception e) {
+                //TODO server disconnected ... notify user on this.
                 log.info(ExceptionUtils.getStackTrace(e));
             }
         }
@@ -210,28 +210,60 @@ public class GameClient extends SimpleApplication {
 
             while(is.read(buffer) > 0) {
                 String serializedPacket = new String(buffer);
-                int beginIndex  = serializedPacket.indexOf("{");
-                int endIndex    = serializedPacket.indexOf("}", beginIndex);
-                serializedPacket = serializedPacket.substring(beginIndex, endIndex+1);
                 log.info(serializedPacket);
-                JsonReader reader = new JsonReader(new StringReader(serializedPacket));
-                reader.setLenient(true);
-                final GamePacket gamePacket = gson.fromJson(reader, GamePacket.class);
-
-                if(gamePacket != null) {
-                    log.info("Test");
-                    client.enqueue(() -> {
-                        blue.setLocalTranslation(gamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
-                        blue.setLocalRotation(
-                                new Quaternion(
-                                        gamePacket.getxAngle(),
-                                        gamePacket.getyAngle(),
-                                        gamePacket.getzAngle(),
-                                        gamePacket.getW()));
-                        return null;
-                    });
-                }
+                GeneralGamePacket receivedPacket = packetManager.getGeneralGamePacket(serializedPacket);
+                packetManager.handlePacket(receivedPacket);
             }
+        }
+    }
+
+    /**
+     * TODO : assign id for current player from received packet
+     */
+    private class ClientAuthPacketListener implements PacketListener {
+
+        @Override
+        public void handlePacket(Packet gamePacket) {
+            if(gamePacket != null) {
+                AuthPacket authPacket = (AuthPacket)gamePacket;
+            }
+        }
+
+        @Override
+        public Class<? extends Packet> packetClass() {
+            return AuthPacket.class;
+        }
+    }
+
+    private class ClientGamePacketListener implements PacketListener {
+
+        private final GameClient client;
+
+        private ClientGamePacketListener(GameClient client) {
+            this.client = client;
+        }
+
+        @Override
+        public void handlePacket(Packet packet) {
+            if(packet != null) {
+                GamePacket gamePacket = (GamePacket) packet;
+                log.info("Test");
+                client.enqueue(() -> {
+                    blue.setLocalTranslation(gamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
+                    blue.setLocalRotation(
+                            new Quaternion(
+                                    gamePacket.getxAngle(),
+                                    gamePacket.getyAngle(),
+                                    gamePacket.getzAngle(),
+                                    gamePacket.getW()));
+                    return null;
+                });
+            }
+        }
+
+        @Override
+        public Class<? extends Packet> packetClass() {
+            return GamePacket.class;
         }
     }
 
