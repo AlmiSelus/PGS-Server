@@ -20,9 +20,10 @@ public class Utils {
         try {
             int beginIndex = json.indexOf("{");
             int endIndex = json.indexOf("}", beginIndex);
-            return json.substring(beginIndex, json.indexOf("}", endIndex + 1) + 1);
+            return json.substring(beginIndex, endIndex + 1);
         } catch(StringIndexOutOfBoundsException e) {
             throw new Exception();
+//            return null;
         }
     }
 }

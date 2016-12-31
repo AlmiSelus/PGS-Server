@@ -1,8 +1,11 @@
 package com.almi.pgs.game;
 
 import com.almi.pgs.commons.Utils;
+import com.almi.pgs.game.packets.*;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,36 +13,50 @@ import org.slf4j.LoggerFactory;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+
+import static com.almi.pgs.commons.Constants.SILENT_MODE;
 
 /**
  * Created by Almi on 2016-12-31.
  */
 public class PacketManager {
     private final static Logger log = LoggerFactory.getLogger(PacketManager.class);
-    private Gson gson = new Gson();
+    private Gson gson;
     private List<PacketListener> packetListeners = new ArrayList<>();
+    private final TypeToken<Packet> packetTypeToken = new TypeToken<Packet>() {};
+    private final List<Class<? extends Packet>> packetTypes = new ArrayList<>();
 
-    public void handlePacket(GeneralGamePacket generalPacket) {
-        Optional<Packet> optionalPacket = Optional.empty();
+    public PacketManager() {
+        this(new Class[] {
+                AuthPacket.class,
+                AuthResponsePacket.class,
+                GamePacket.class,
+                GenericResponse.class
+        });
+    }
 
-        if(generalPacket.getAuthPacket() != null) {
-            optionalPacket = Optional.of(generalPacket.getAuthPacket());
-        } else if(generalPacket.getGamePacket() != null) {
-            optionalPacket = Optional.of(generalPacket.getGamePacket());
-        } else if(generalPacket.getGenericPacket() != null) {
-            optionalPacket = Optional.of(generalPacket.getGenericPacket());
+    public PacketManager(Class<? extends Packet>[] packetTypes) {
+
+
+        for(Class<? extends Packet> packetType : packetTypes) {
+            this.packetTypes.add(packetType);
         }
 
-        if(optionalPacket.isPresent()) {
-            Packet packet = optionalPacket.get();
-            for (PacketListener packetListener : packetListeners) {
-                if(packetListener.packetClass() == packet.getClass()) {
-                    log.info("Selected for class " + packetListener.getClass().getSimpleName());
-                    packetListener.handlePacket(packet);
-                    break;
-                }
+        createPacketTypeAdapter();
+    }
+
+    public void handlePacket(Packet packet) {
+        for (PacketListener packetListener : packetListeners) {
+            if(packetListener.packetClass() == packet.getClass()) {
+                packetListener.handlePacket(packet);
+                break;
             }
+        }
+    }
+
+    public void registerNewPacketType(Class<? extends Packet> packetClass) {
+        if(!packetTypes.contains(packetClass)) {
+            packetTypes.add(packetClass);
         }
     }
 
@@ -54,29 +71,24 @@ public class PacketManager {
         }
     }
 
-    public GeneralGamePacket getGeneralGamePacket(String stringified) {
+    public Packet getGeneralGamePacket(String stringified) {
         try {
             String receivedPacketString = Utils.stripJson(stringified);
-            log.info("Received Packet = " + receivedPacketString);
-            return gson.fromJson(receivedPacketString, GeneralGamePacket.class);
+            if(!SILENT_MODE) {
+                log.info("Received Packet = " + receivedPacketString);
+            }
+            return gson.fromJson(receivedPacketString, packetTypeToken.getType());
         } catch (Exception e) {
+//            log.info(ExceptionUtils.getStackTrace(e));
             return null;
         }
     }
 
     public void sendPacket(ReliableSocket clientSocket, Packet packet) {
         try {
-            GeneralGamePacket generalGamePacket = new GeneralGamePacket();
-            if(packet.getClass() == AuthPacket.class) {
-                generalGamePacket.setAuthPacket((AuthPacket) packet);
-            } else if(packet.getClass() == GamePacket.class) {
-                generalGamePacket.setGamePacket((GamePacket) packet);
-            } else if(packet.getClass() == GenericResponse.class) {
-                generalGamePacket.setGenericPacket((GenericResponse) packet);
-            }
-
             OutputStream os = clientSocket.getOutputStream();
-            os.write(gson.toJson(generalGamePacket).getBytes());
+            String packetString = gson.toJson(packet, packetTypeToken.getType());
+            os.write(packetString.getBytes());
             os.flush();
         } catch(Exception e) {
             log.error(ExceptionUtils.getStackTrace(e));
@@ -87,5 +99,16 @@ public class PacketManager {
         if(i < packetListeners.size()) {
             packetListeners.remove(i);
         }
+    }
+
+    private void createPacketTypeAdapter() {
+        final RuntimeTypeAdapterFactory<Packet> packetTypeFactory = RuntimeTypeAdapterFactory
+                .of(Packet.class, "type");
+        for (Class<? extends Packet> packetClass : packetTypes) {
+//            this.packetTypes.add(packetClass);
+            packetTypeFactory.registerSubtype(packetClass);
+        }
+        gson = new GsonBuilder().registerTypeAdapterFactory(packetTypeFactory).create();
+
     }
 }

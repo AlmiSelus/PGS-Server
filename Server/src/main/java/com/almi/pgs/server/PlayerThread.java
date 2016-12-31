@@ -1,7 +1,9 @@
 package com.almi.pgs.server;
 
 import com.almi.pgs.game.*;
-import com.almi.pgs.germancoding.rudp.ReliableServerSocket;
+import com.almi.pgs.game.packets.AuthPacket;
+import com.almi.pgs.game.packets.GamePacket;
+import com.almi.pgs.game.packets.Packet;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.almi.pgs.server.authentication.*;
 import org.slf4j.Logger;
@@ -70,8 +72,8 @@ public class PlayerThread extends Thread {
 
                 while ((is.read(buffer)) > 0) {
                     String val = new String(buffer);
-                    GeneralGamePacket packet = packetManager.getGeneralGamePacket(val);
-                    log.info("Object is null ? " + Objects.isNull(packet));
+                    Packet packet = packetManager.getGeneralGamePacket(val);
+//                    log.info("Object is null ? " + Objects.isNull(packet));
                     if(packet != null) {
                         packetManager.handlePacket(packet);
                     }

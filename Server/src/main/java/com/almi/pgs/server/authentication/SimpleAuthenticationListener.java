@@ -1,11 +1,10 @@
 package com.almi.pgs.server.authentication;
 
-import com.almi.pgs.game.GamePacket;
-import com.almi.pgs.game.GenericResponse;
+import com.almi.pgs.game.packets.AuthResponsePacket;
+import com.almi.pgs.game.packets.GamePacket;
+import com.almi.pgs.game.packets.GenericResponse;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
-import com.almi.pgs.server.PlayerThread;
-import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +38,10 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
         GamePacket gamePacket = new GamePacket(0,0,0,0,0,0,0);
         gamePacket.setPlayerID((byte) playerID);
         gamePacket.setTeam((byte) 1); //assign all players to same team for now
-        packetManager.sendPacket(clientSocket, new GenericResponse("Ok", 200));
+        AuthResponsePacket authCorrect = new AuthResponsePacket((short) 200);
+        authCorrect.setPid(gamePacket.getPlayerID());
+        authCorrect.setTid(gamePacket.getTeam());
+        packetManager.sendPacket(clientSocket, authCorrect);
         packetManager.sendPacket(clientSocket, gamePacket);
 //        new PlayerThread(clientSocket, playerID, packetManager).start();
         packetManager.removePacketListener(0);

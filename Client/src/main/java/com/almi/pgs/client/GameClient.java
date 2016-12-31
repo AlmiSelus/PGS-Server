@@ -2,8 +2,11 @@ package com.almi.pgs.client;
 
 import com.almi.pgs.commons.Constants;
 import com.almi.pgs.game.*;
+import com.almi.pgs.game.packets.AuthPacket;
+import com.almi.pgs.game.packets.AuthResponsePacket;
+import com.almi.pgs.game.packets.GamePacket;
+import com.almi.pgs.game.packets.Packet;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
-import com.google.gson.Gson;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.plugins.FileLocator;
 import com.jme3.input.KeyInput;
@@ -11,7 +14,6 @@ import com.jme3.input.MouseInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
-import com.jme3.input.controls.MouseAxisTrigger;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
@@ -21,11 +23,8 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.queue.RenderQueue;
-import com.jme3.scene.CameraNode;
 import com.jme3.scene.Geometry;
-import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.jme3.scene.control.CameraControl.ControlDirection;
 import com.jme3.scene.shape.Box;
 import com.jme3.shadow.DirectionalLightShadowFilter;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
@@ -36,11 +35,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import static com.almi.pgs.commons.Constants.RECEIVE_BUFFER_SIZE;
+import static com.almi.pgs.commons.Constants.SEND_BUFFER_SIZE;
+import static com.almi.pgs.commons.Constants.SILENT_MODE;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -49,11 +51,12 @@ public class GameClient extends SimpleApplication {
 
     private final static Logger log = LoggerFactory.getLogger(GameClient.class);
 
-    private Geometry red;
+    private Geometry currentPlayerGeometry;
     private Geometry blue;
     private Boolean isRunning = false;
     private ReliableSocket server;
-    private int id;
+    private int id = -1;
+    private int teamID = -1;
     /**
      * Packet manager manages all communication with server through ReliableSocket. Use this manager
      * for sending data and add packet listeners to receive certain packet
@@ -66,6 +69,7 @@ public class GameClient extends SimpleApplication {
     private Map<Integer, Geometry> playerSpatials = new HashMap<>();
 
     public GameClient(String[] gameStringParams) {
+        packetManager.addPacketListener(new ClientAuthPacketListener());
         packetManager.addPacketListener(new ClientGamePacketListener(this));
     }
 
@@ -79,17 +83,17 @@ public class GameClient extends SimpleApplication {
         mat1.setColor("Color", ColorRGBA.Blue);
         blue.setMaterial(mat1);
 
-        /** create a red box straight above the blue one at (1,3,1) */
+        /** create a currentPlayerGeometry box straight above the blue one at (1,3,1) */
         Box box2 = new Box(1,1,1);
-        red = new Geometry("Box", box2);
-        red.setLocalTranslation(new Vector3f(1,3,1));
+        currentPlayerGeometry = new Geometry("Box", box2);
+        currentPlayerGeometry.setLocalTranslation(new Vector3f(1,3,1));
         Material mat2 = new Material(assetManager,
                 "Common/MatDefs/Misc/Unshaded.j3md");
         mat2.setColor("Color", ColorRGBA.Red);
-        red.setMaterial(mat2);
+        currentPlayerGeometry.setMaterial(mat2);
 
         rootNode.attachChild(blue);
-        rootNode.attachChild(red);
+        rootNode.attachChild(currentPlayerGeometry);
 
 		assetManager.registerLocator(new File("Client/assets").getAbsolutePath(), FileLocator.class);
 
@@ -99,6 +103,8 @@ public class GameClient extends SimpleApplication {
         initKeys();
         try {
             server = new ReliableSocket();
+            server.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
+            server.setSendBufferSize(SEND_BUFFER_SIZE);
             server.connect(new InetSocketAddress("127.0.0.1", Constants.PORT));
 
         } catch (IOException e) {
@@ -136,19 +142,19 @@ public class GameClient extends SimpleApplication {
         public void onAnalog(String name, float value, float tpf) {
             if (isRunning) {
                 if (name.equals("Rotate")) {
-                    red.rotate(0, value*speed, 0);
+                    currentPlayerGeometry.rotate(0, value*speed, 0);
                 }
                 if (name.equals("Right")) {
-                    Vector3f v = red.getLocalTranslation();
-                    red.setLocalTranslation(v.x + value*speed, v.y, v.z);
+                    Vector3f v = currentPlayerGeometry.getLocalTranslation();
+                    currentPlayerGeometry.setLocalTranslation(v.x + value*speed, v.y, v.z);
                 }
                 if (name.equals("Left")) {
-                    Vector3f v = red.getLocalTranslation();
-                    red.setLocalTranslation(v.x - value*speed, v.y, v.z);
+                    Vector3f v = currentPlayerGeometry.getLocalTranslation();
+                    currentPlayerGeometry.setLocalTranslation(v.x - value*speed, v.y, v.z);
                 }
 
-                Vector3f redTranslation = red.getWorldTranslation();
-                Quaternion redRotation    = red.getWorldRotation();
+                Vector3f redTranslation = currentPlayerGeometry.getWorldTranslation();
+                Quaternion redRotation    = currentPlayerGeometry.getWorldRotation();
                 GamePacket movementPacket = new GamePacket(redTranslation.getX(),
                         redTranslation.getY(),
                         redTranslation.getZ(),
@@ -156,6 +162,8 @@ public class GameClient extends SimpleApplication {
                         redRotation.getX(),
                         redRotation.getY(),
                         redRotation.getZ());
+                movementPacket.setPlayerID((byte) id);
+                movementPacket.setTeam((byte) teamID);
                 packetManager.sendPacket(server, movementPacket);
             } else {
                 if(name.equals("Login")) {
@@ -163,8 +171,6 @@ public class GameClient extends SimpleApplication {
                         AuthPacket authPacket = new AuthPacket("user1", "password1");
                         packetManager.sendPacket(server, authPacket);
                         log.info("Packet sent");
-                        isLoginRequestSent = true;
-                        isRunning = true;
                     }
                 } else {
                     System.out.println("Press P to unpause.");
@@ -197,8 +203,11 @@ public class GameClient extends SimpleApplication {
 
             while(is.read(buffer) > 0) {
                 String serializedPacket = new String(buffer);
-                log.info(serializedPacket);
-                GeneralGamePacket receivedPacket = packetManager.getGeneralGamePacket(serializedPacket);
+//                log.info(serializedPacket);
+                Packet receivedPacket = packetManager.getGeneralGamePacket(serializedPacket);
+                if(!SILENT_MODE) {
+                    log.info(Objects.isNull(receivedPacket) + "");
+                }
                 if(receivedPacket != null) {
                     packetManager.handlePacket(receivedPacket);
                 }
@@ -214,13 +223,28 @@ public class GameClient extends SimpleApplication {
         @Override
         public void handlePacket(Packet gamePacket) {
             if(gamePacket != null) {
-                AuthPacket authPacket = (AuthPacket)gamePacket;
+                AuthResponsePacket authResponse = (AuthResponsePacket) gamePacket;
+                if(!SILENT_MODE) {
+                    log.info("Response code = " + authResponse.getCode());
+                }
+                if(authResponse.getCode() == 200) {
+                    if(!SILENT_MODE) {
+                        log.info("client ok");
+                    }
+                    id = authResponse.getPid();
+                    teamID = authResponse.getTid();
+                    isLoginRequestSent = true;
+                    isRunning = true;
+                } else {
+                    //TODO proper notification for client
+                    log.info(authResponse.getReason());
+                }
             }
         }
 
         @Override
         public Class<? extends Packet> packetClass() {
-            return AuthPacket.class;
+            return AuthResponsePacket.class;
         }
     }
 
@@ -234,10 +258,10 @@ public class GameClient extends SimpleApplication {
 
         @Override
         public void handlePacket(Packet packet) {
-            log.info("Is null? " + Objects.isNull(packet));
+//            log.info("Is null? " + Objects.isNull(packet));
             if(packet != null) {
                 GamePacket gamePacket = (GamePacket) packet;
-                log.info("Test");
+//                log.info("Test");
                 client.enqueue(() -> {
                     blue.setLocalTranslation(gamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
                     blue.setLocalRotation(

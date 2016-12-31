@@ -1,4 +1,4 @@
-package com.almi.pgs.game;
+package com.almi.pgs.game.packets;
 
 /**
  * Created by Almi on 2016-12-31.
@@ -9,6 +9,10 @@ public class GeneralGamePacket implements Packet {
     private AuthPacket authPacket = null;
     private GamePacket gamePacket = null;
     private GenericResponse genericPacket = null;
+    private Packet packet;
+
+    public GeneralGamePacket() {
+    }
 
     public AuthPacket getAuthPacket() {
         return authPacket;
@@ -32,5 +36,13 @@ public class GeneralGamePacket implements Packet {
 
     public void setGenericPacket(GenericResponse genericPacket) {
         this.genericPacket = genericPacket;
+    }
+
+    public Packet getPacket() {
+        return packet;
+    }
+
+    public void setPacket(Packet packet) {
+        this.packet = packet;
     }
 }

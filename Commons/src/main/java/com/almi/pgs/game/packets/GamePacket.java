@@ -1,4 +1,4 @@
-package com.almi.pgs.game;
+package com.almi.pgs.game.packets;
 
 import java.io.Serializable;
 

@@ -1,5 +1,6 @@
 package com.almi.pgs.client;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,7 @@ public class GameClientRunner {
             GameClient gameClient = new GameClient(args);
             gameClient.start();
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error(ExceptionUtils.getStackTrace(e));
         }
     }
 

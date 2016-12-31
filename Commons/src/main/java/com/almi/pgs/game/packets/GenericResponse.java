@@ -1,4 +1,4 @@
-package com.almi.pgs.game;
+package com.almi.pgs.game.packets;
 
 /**
  * Created by Almi on 2016-12-30.

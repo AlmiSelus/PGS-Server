@@ -1,5 +1,7 @@
 package com.almi.pgs.game;
 
+import com.almi.pgs.game.packets.Packet;
+
 /**
  * Created by Almi on 2016-12-31.
  */

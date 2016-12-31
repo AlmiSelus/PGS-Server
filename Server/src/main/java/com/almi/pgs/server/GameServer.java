@@ -10,6 +10,9 @@ import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import static com.almi.pgs.commons.Constants.RECEIVE_BUFFER_SIZE;
+import static com.almi.pgs.commons.Constants.SEND_BUFFER_SIZE;
+
 /**
  * Created by Almi on 2016-12-09.
  *
@@ -45,6 +48,8 @@ public class GameServer implements Runnable {
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             for(int i = 0; i < maxPlayersNum; ++i) {
                 ReliableSocket clientSocket = (ReliableSocket) socket.accept();
+                clientSocket.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
+                clientSocket.setSendBufferSize(SEND_BUFFER_SIZE);
                 new PlayerThread(clientSocket, i, Collections.synchronizedList(new ArrayList<>())).start();
             }
             while(true){}
