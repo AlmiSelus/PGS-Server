@@ -6,9 +6,9 @@ package com.almi.pgs.game;
  * Only one at a time can be set
  */
 public class GeneralGamePacket implements Packet {
-    private AuthPacket authPacket;
-    private GamePacket gamePacket;
-    private GenericResponse genericPacket;
+    private AuthPacket authPacket = null;
+    private GamePacket gamePacket = null;
+    private GenericResponse genericPacket = null;
 
     public AuthPacket getAuthPacket() {
         return authPacket;

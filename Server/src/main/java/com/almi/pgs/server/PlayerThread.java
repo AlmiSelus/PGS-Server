@@ -10,10 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Created by Almi on 2016-12-30.
@@ -74,6 +71,7 @@ public class PlayerThread extends Thread {
                 while ((is.read(buffer)) > 0) {
                     String val = new String(buffer);
                     GeneralGamePacket packet = packetManager.getGeneralGamePacket(val);
+                    log.info("Object is null ? " + Objects.isNull(packet));
                     if(packet != null) {
                         packetManager.handlePacket(packet);
                     }
@@ -94,6 +92,7 @@ public class PlayerThread extends Thread {
 
         @Override
         public void handlePacket(Packet p) {
+            log.info("In authentication");
             AuthPacket packet = (AuthPacket)p;
             try {
                 Optional<Player> optionalPlayer = localDatabase.getPlayer(packet.getLogin());
@@ -106,9 +105,6 @@ public class PlayerThread extends Thread {
                 }
 
                 authListener.authenticationPassed(packetManager);
-                synchronized (packetManager) {
-                    packetManager.removePacketListener(0);
-                }
 
             } catch (Exception e) {
                 authListener.authenticationFailed(packetManager, e.getMessage());
@@ -136,6 +132,7 @@ public class PlayerThread extends Thread {
             /**
              * Write to socket - send received packet back :)
              */
+            log.info("Send back packet");
             packetManager.sendPacket(clientSocket, gamePacket);
         }
 

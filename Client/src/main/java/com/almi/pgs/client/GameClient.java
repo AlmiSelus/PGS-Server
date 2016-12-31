@@ -40,6 +40,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -198,7 +199,9 @@ public class GameClient extends SimpleApplication {
                 String serializedPacket = new String(buffer);
                 log.info(serializedPacket);
                 GeneralGamePacket receivedPacket = packetManager.getGeneralGamePacket(serializedPacket);
-                packetManager.handlePacket(receivedPacket);
+                if(receivedPacket != null) {
+                    packetManager.handlePacket(receivedPacket);
+                }
             }
         }
     }
@@ -231,6 +234,7 @@ public class GameClient extends SimpleApplication {
 
         @Override
         public void handlePacket(Packet packet) {
+            log.info("Is null? " + Objects.isNull(packet));
             if(packet != null) {
                 GamePacket gamePacket = (GamePacket) packet;
                 log.info("Test");

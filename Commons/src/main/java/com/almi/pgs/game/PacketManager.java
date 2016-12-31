@@ -35,6 +35,7 @@ public class PacketManager {
             Packet packet = optionalPacket.get();
             for (PacketListener packetListener : packetListeners) {
                 if(packetListener.packetClass() == packet.getClass()) {
+                    log.info("Selected for class " + packetListener.getClass().getSimpleName());
                     packetListener.handlePacket(packet);
                     break;
                 }
@@ -47,7 +48,8 @@ public class PacketManager {
      * @param packetListener
      */
     public void addPacketListener(PacketListener packetListener) {
-        if(packetListeners.stream().filter(listener->listener.packetClass() != packetListener.packetClass()).count() == 0) {
+        if(packetListeners.stream().filter(listener->listener.packetClass() == packetListener.packetClass()).count() == 0) {
+            log.info("Added listener for " + packetListener.packetClass().getSimpleName());
             this.packetListeners.add(packetListener);
         }
     }

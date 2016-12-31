@@ -42,6 +42,7 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
         packetManager.sendPacket(clientSocket, new GenericResponse("Ok", 200));
         packetManager.sendPacket(clientSocket, gamePacket);
 //        new PlayerThread(clientSocket, playerID, packetManager).start();
+        packetManager.removePacketListener(0);
         /**
          * Notify all connected players that new user has joined.
          */
