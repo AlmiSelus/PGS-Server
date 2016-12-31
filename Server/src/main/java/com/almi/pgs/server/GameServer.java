@@ -44,13 +44,14 @@ public class GameServer implements Runnable {
         log.info("Max players set to " + maxPlayersNum);
         try {
             checkServerRunning();
-
+			ArrayList<ReliableSocket> socketsList = new ArrayList<>();
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             for(int i = 0; i < maxPlayersNum; ++i) {
                 ReliableSocket clientSocket = (ReliableSocket) socket.accept();
                 clientSocket.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
                 clientSocket.setSendBufferSize(SEND_BUFFER_SIZE);
-                new PlayerThread(clientSocket, i, Collections.synchronizedList(new ArrayList<>())).start();
+				socketsList.add(clientSocket);
+                new PlayerThread(clientSocket, i, Collections.synchronizedList(socketsList)).start();
             }
             while(true){}
         } catch (Exception e) {

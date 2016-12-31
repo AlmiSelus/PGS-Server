@@ -1,48 +1,65 @@
 package com.almi.pgs.game.packets;
 
+import java.math.BigInteger;
+
 /**
  * Created by Almi on 2016-12-31.
  */
 public class AuthResponsePacket implements Packet {
-    private byte pid;
-    private byte tid;
-    private short code;
-    private String reason;
 
-    public AuthResponsePacket(short code) {
-        this.code = code;
-    }
+	private byte playerID;
+	private byte teamID;
+	private int hash;
 
+	private short code;
+	private String reason;
 
-    public byte getPid() {
-        return pid;
-    }
+	public AuthResponsePacket(short code) {
+		this.code = code;
+	}
 
-    public void setPid(byte pid) {
-        this.pid = pid;
-    }
+	public byte getPlayerID() {
+		return playerID;
+	}
 
-    public byte getTid() {
-        return tid;
-    }
+	public void setPlayerID(byte pid) {
+		this.playerID = pid;
+	}
 
-    public void setTid(byte tid) {
-        this.tid = tid;
-    }
+	public byte getTeamID() {
+		return teamID;
+	}
 
-    public String getReason() {
-        return reason;
-    }
+	public void setTeamID(byte tid) {
+		this.teamID = tid;
+	}
 
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
+	public String getReason() {
+		return reason;
+	}
 
-    public short getCode() {
-        return code;
-    }
+	public void setReason(String reason) {
+		this.reason = reason;
+	}
 
-    public void setCode(short code) {
-        this.code = code;
-    }
+	public short getCode() {
+		return code;
+	}
+
+	public void setCode(short code) {
+		this.code = code;
+	}
+
+	public int getHash() {
+		return hash;
+	}
+
+	public void setHash(int hash) {
+		this.hash = hash;
+	}
+
+	@Override
+	public String toString() {
+		return "playerID: " + playerID + " teamID: " + teamID + " hash: " + hash;
+	}
 }

@@ -43,6 +43,8 @@ import java.util.Objects;
 import static com.almi.pgs.commons.Constants.RECEIVE_BUFFER_SIZE;
 import static com.almi.pgs.commons.Constants.SEND_BUFFER_SIZE;
 import static com.almi.pgs.commons.Constants.SILENT_MODE;
+import java.math.BigInteger;
+import java.util.logging.Level;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -51,22 +53,19 @@ public class GameClient extends SimpleApplication {
 
     private final static Logger log = LoggerFactory.getLogger(GameClient.class);
 
-    private Geometry currentPlayerGeometry;
-    private Geometry blue;
     private Boolean isRunning = false;
     private ReliableSocket server;
-    private int id = -1;
-    private int teamID = -1;
+    private Player player;
     /**
      * Packet manager manages all communication with server through ReliableSocket. Use this manager
      * for sending data and add packet listeners to receive certain packet
      */
     private PacketManager packetManager = new PacketManager();
     /**
-     * PlayerID - Player Geometry (if need arises - change value object type to whatever needed).
+     * PlayerID - Player (if need arises - change value object type to whatever needed).
      * Current player does not have entry in this map!!! use other variables!
      */
-    private Map<Integer, Geometry> playerSpatials = new HashMap<>();
+    private Map<Byte, Player> players = new HashMap<>();
 
     public GameClient(String[] gameStringParams) {
         packetManager.addPacketListener(new ClientAuthPacketListener());
@@ -75,28 +74,8 @@ public class GameClient extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
-        Box box1 = new Box(1,1,1);
-        blue = new Geometry("Box", box1);
-        blue.setLocalTranslation(new Vector3f(1,-1,1));
-        Material mat1 = new Material(assetManager,
-                "Common/MatDefs/Misc/Unshaded.j3md");
-        mat1.setColor("Color", ColorRGBA.Blue);
-        blue.setMaterial(mat1);
-
-        /** create a currentPlayerGeometry box straight above the blue one at (1,3,1) */
-        Box box2 = new Box(1,1,1);
-        currentPlayerGeometry = new Geometry("Box", box2);
-        currentPlayerGeometry.setLocalTranslation(new Vector3f(1,3,1));
-        Material mat2 = new Material(assetManager,
-                "Common/MatDefs/Misc/Unshaded.j3md");
-        mat2.setColor("Color", ColorRGBA.Red);
-        currentPlayerGeometry.setMaterial(mat2);
-
-        rootNode.attachChild(blue);
-        rootNode.attachChild(currentPlayerGeometry);
-
 		assetManager.registerLocator(new File("Client/assets").getAbsolutePath(), FileLocator.class);
-
+		flyCam.setMoveSpeed(20);
 		this.setLevel();
 		this.setLight();
 
@@ -122,12 +101,14 @@ public class GameClient extends SimpleApplication {
         // You can map one or several inputs to one named action
         inputManager.addMapping("Login",  new KeyTrigger(KeyInput.KEY_G));
         inputManager.addMapping("Pause",  new KeyTrigger(KeyInput.KEY_P));
-        inputManager.addMapping("Left",   new KeyTrigger(KeyInput.KEY_J));
-        inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_K));
+        inputManager.addMapping("Left",   new KeyTrigger(KeyInput.KEY_A));
+        inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_D));
+		inputManager.addMapping("Forward",  new KeyTrigger(KeyInput.KEY_W));
+		inputManager.addMapping("Backward",  new KeyTrigger(KeyInput.KEY_S));
         inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE), new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         // Add the names to the action listener.
         inputManager.addListener(actionListener,"Pause");
-        inputManager.addListener(analogListener, "Login", "Left", "Right", "Rotate");
+        inputManager.addListener(analogListener, "Login", "Left", "Right", "Left", "Forward", "Backward");
 
     }
 
@@ -142,19 +123,17 @@ public class GameClient extends SimpleApplication {
         public void onAnalog(String name, float value, float tpf) {
             if (isRunning) {
                 if (name.equals("Rotate")) {
-                    currentPlayerGeometry.rotate(0, value*speed, 0);
+
                 }
                 if (name.equals("Right")) {
-                    Vector3f v = currentPlayerGeometry.getLocalTranslation();
-                    currentPlayerGeometry.setLocalTranslation(v.x + value*speed, v.y, v.z);
+
                 }
                 if (name.equals("Left")) {
-                    Vector3f v = currentPlayerGeometry.getLocalTranslation();
-                    currentPlayerGeometry.setLocalTranslation(v.x - value*speed, v.y, v.z);
+
                 }
 
-                Vector3f redTranslation = currentPlayerGeometry.getWorldTranslation();
-                Quaternion redRotation    = currentPlayerGeometry.getWorldRotation();
+				Vector3f redTranslation = cam.getLocation();
+				Quaternion redRotation = cam.getRotation();
                 GamePacket movementPacket = new GamePacket(redTranslation.getX(),
                         redTranslation.getY(),
                         redTranslation.getZ(),
@@ -162,8 +141,8 @@ public class GameClient extends SimpleApplication {
                         redRotation.getX(),
                         redRotation.getY(),
                         redRotation.getZ());
-                movementPacket.setPlayerID((byte) id);
-                movementPacket.setTeam((byte) teamID);
+                movementPacket.setPlayerID((byte) player.getPlayerId());
+                movementPacket.setTeam((byte) player.getTeam());
                 packetManager.sendPacket(server, movementPacket);
             } else {
                 if(name.equals("Login")) {
@@ -231,8 +210,7 @@ public class GameClient extends SimpleApplication {
                     if(!SILENT_MODE) {
                         log.info("client ok");
                     }
-                    id = authResponse.getPid();
-                    teamID = authResponse.getTid();
+					player = new Player(authResponse.getPlayerID(), authResponse.getTeamID(), authResponse.getHash());
                     isLoginRequestSent = true;
                     isRunning = true;
                 } else {
@@ -258,18 +236,20 @@ public class GameClient extends SimpleApplication {
 
         @Override
         public void handlePacket(Packet packet) {
-//            log.info("Is null? " + Objects.isNull(packet));
             if(packet != null) {
                 GamePacket gamePacket = (GamePacket) packet;
-//                log.info("Test");
                 client.enqueue(() -> {
-                    blue.setLocalTranslation(gamePacket.getX(), blue.getLocalTranslation().getY(), blue.getLocalTranslation().getZ());
-                    blue.setLocalRotation(
-                            new Quaternion(
-                                    gamePacket.getxAngle(),
-                                    gamePacket.getyAngle(),
-                                    gamePacket.getzAngle(),
-                                    gamePacket.getW()));
+					if (player.getPlayerId() == gamePacket.getPlayerID()) {
+						return null;
+					}
+					Player player = players.get(gamePacket.getPlayerID());
+					if (player == null) {
+						player = new Player(gamePacket);
+						player.setGeometry(getNewPlayerGeometry());
+						players.put(player.getPlayerId(), player);
+					}
+					player.SetNewGamePacket(gamePacket);
+
                     return null;
                 });
             }
@@ -309,5 +289,16 @@ public class GameClient extends SimpleApplication {
 		AmbientLight al = new AmbientLight();
 		al.setColor(ColorRGBA.White.mult(1.3f));
 		rootNode.addLight(al);
+	}
+
+	private Geometry getNewPlayerGeometry() {
+		Box box1 = new Box(1, 1, 1);
+		Geometry geometry = new Geometry("Box", box1);
+		geometry.setLocalTranslation(new Vector3f(1, -1, 1));
+		Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+		mat1.setColor("Color", ColorRGBA.Yellow);
+		geometry.setMaterial(mat1);
+		rootNode.attachChild(geometry);
+		return geometry;
 	}
 }

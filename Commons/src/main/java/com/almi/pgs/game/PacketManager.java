@@ -88,6 +88,9 @@ public class PacketManager {
         try {
             OutputStream os = clientSocket.getOutputStream();
             String packetString = gson.toJson(packet, packetTypeToken.getType());
+			if(!SILENT_MODE) {
+				log.info("Send Packet = " + packetString);
+			}
             os.write(packetString.getBytes());
             os.flush();
         } catch(Exception e) {

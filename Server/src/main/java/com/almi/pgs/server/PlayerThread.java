@@ -131,11 +131,11 @@ public class PlayerThread extends Thread {
 
         @Override
         public void handlePacket(Packet gamePacket) {
-            /**
-             * Write to socket - send received packet back :)
-             */
-            log.info("Send back packet");
-            packetManager.sendPacket(clientSocket, gamePacket);
+			synchronized(userSockets) {
+				for (ReliableSocket socket : userSockets) {
+					packetManager.sendPacket(socket, gamePacket);
+				}
+			}
         }
 
         @Override
