@@ -58,7 +58,9 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
     @Override
     public void authenticationFailed(PacketManager packetManager, String reason) {
         log.info("Authentication for user failed. Reason: " + reason);
-        packetManager.sendPacket(clientSocket, new GenericResponse(reason, 403));
+        AuthResponsePacket failedPacket = new AuthResponsePacket((short) 403);
+        failedPacket.setReason(reason);
+        packetManager.sendPacket(clientSocket, failedPacket);
     }
 
 }
