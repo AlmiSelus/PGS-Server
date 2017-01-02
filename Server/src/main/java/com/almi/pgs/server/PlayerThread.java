@@ -24,14 +24,17 @@ public class PlayerThread extends Thread {
     private ReliableSocket socket;
     private AuthenticationLocalDatabase localDatabase = new AuthenticationLocalDatabase();
     private int playerID;
-    private List<ReliableSocket> userSockets;
+    private final List<ReliableSocket> userSockets;
     private PacketManager packetManager = new PacketManager();
+
+    private final static Object lock = new Object();
 
 
     public PlayerThread(ReliableSocket socket, int playerID, List<ReliableSocket> playerSockets) {
         this.socket = socket;
         this.playerID = playerID;
         this.userSockets = playerSockets;
+        setDaemon(true);
     }
 
     @Override
@@ -72,10 +75,13 @@ public class PlayerThread extends Thread {
 
                 while ((is.read(buffer)) > 0) {
                     String val = new String(buffer);
-                    Packet packet = packetManager.getGeneralGamePacket(val);
+                    log.info("Received from client " + val);
+                    synchronized (lock) {
+                        Packet packet = packetManager.getGeneralGamePacket(val);
 //                    log.info("Object is null ? " + Objects.isNull(packet));
-                    if(packet != null) {
-                        packetManager.handlePacket(packet);
+                        if (packet != null) {
+                            packetManager.handlePacket(packet);
+                        }
                     }
                 }
             } catch (IOException e) {
@@ -131,11 +137,12 @@ public class PlayerThread extends Thread {
 
         @Override
         public void handlePacket(Packet gamePacket) {
-			synchronized(userSockets) {
+            log.info("Resending to all " + gamePacket);
+//			synchronized(userSockets) {
 				for (ReliableSocket socket : userSockets) {
 					packetManager.sendPacket(socket, gamePacket);
 				}
-			}
+//			}
         }
 
         @Override

@@ -34,6 +34,8 @@ public class GamePacket implements Serializable, Packet {
      */
     private byte playerID;
 
+    private long currentTime;
+
     public GamePacket(float x, float y, float z, float w, float xAngle, float yAngle, float zAngle) {
         this.x = x;
         this.y = y;
@@ -98,5 +100,18 @@ public class GamePacket implements Serializable, Packet {
 
     public float getzAngle() {
         return zAngle;
+    }
+
+    @Override
+    public String toString() {
+        return "[ x = " + x + ", y = " + y + ", z = " + z + ", id = " + playerID + ", t = " + currentTime + " ]";
+    }
+
+    public long getCurrentTime() {
+        return currentTime;
+    }
+
+    public void setCurrentTime(long currentTime) {
+        this.currentTime = currentTime;
     }
 }

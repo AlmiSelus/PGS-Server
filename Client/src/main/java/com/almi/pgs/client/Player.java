@@ -1,8 +1,8 @@
 package com.almi.pgs.client;
 
 import com.almi.pgs.game.packets.GamePacket;
+import com.jme3.math.Quaternion;
 import com.jme3.scene.Geometry;
-import java.math.BigInteger;
 
 /**
  *
@@ -13,6 +13,7 @@ public class Player {
 	private byte playerId;
 	private byte team;
 	private int hash;
+	private long packetTime;
 
 	private Geometry geometry;
 
@@ -43,8 +44,20 @@ public class Player {
 		this.geometry = geometry;
 	}
 
-	void SetNewGamePacket(GamePacket gamePacket) {
+	void setNewGamePacket(GamePacket gamePacket) {
 		this.geometry.setLocalTranslation(gamePacket.getX(), gamePacket.getY(), gamePacket.getZ());
+		this.geometry.setLocalRotation(
+				new Quaternion(gamePacket.getxAngle(),
+				gamePacket.getyAngle(),
+				gamePacket.getzAngle(),
+				gamePacket.getW()));
 	}
 
+	public long getPacketTime() {
+		return packetTime;
+	}
+
+	public void setPacketTime(long packetTime) {
+		this.packetTime = packetTime;
+	}
 }

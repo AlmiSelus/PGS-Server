@@ -36,15 +36,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static com.almi.pgs.commons.Constants.RECEIVE_BUFFER_SIZE;
 import static com.almi.pgs.commons.Constants.SEND_BUFFER_SIZE;
 import static com.almi.pgs.commons.Constants.SILENT_MODE;
-import java.math.BigInteger;
-import java.util.logging.Level;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -56,6 +52,9 @@ public class GameClient extends SimpleApplication {
     private Boolean isRunning = false;
     private ReliableSocket server;
     private Player player;
+
+    private SendMessageThread senderThread = new SendMessageThread();
+
     /**
      * Packet manager manages all communication with server through ReliableSocket. Use this manager
      * for sending data and add packet listeners to receive certain packet
@@ -65,7 +64,7 @@ public class GameClient extends SimpleApplication {
      * PlayerID - Player (if need arises - change value object type to whatever needed).
      * Current player does not have entry in this map!!! use other variables!
      */
-    private Map<Byte, Player> players = new HashMap<>();
+    private Map<Byte, Player> players = Collections.synchronizedMap(new HashMap<>());
 
     public GameClient(String[] gameStringParams) {
         packetManager.addPacketListener(new ClientAuthPacketListener());
@@ -74,6 +73,7 @@ public class GameClient extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+        setPauseOnLostFocus(false);
 		assetManager.registerLocator(new File("Client/assets").getAbsolutePath(), FileLocator.class);
 		flyCam.setMoveSpeed(20);
 		this.setLevel();
@@ -90,6 +90,7 @@ public class GameClient extends SimpleApplication {
             log.error(ExceptionUtils.getStackTrace(e));
         }
         new ReceiverThread().start();
+        senderThread.start();
     }
 
     @Override
@@ -131,19 +132,7 @@ public class GameClient extends SimpleApplication {
                 if (name.equals("Left")) {
 
                 }
-
-				Vector3f redTranslation = cam.getLocation();
-				Quaternion redRotation = cam.getRotation();
-                GamePacket movementPacket = new GamePacket(redTranslation.getX(),
-                        redTranslation.getY(),
-                        redTranslation.getZ(),
-                        redRotation.getW(),
-                        redRotation.getX(),
-                        redRotation.getY(),
-                        redRotation.getZ());
-                movementPacket.setPlayerID((byte) player.getPlayerId());
-                movementPacket.setTeam((byte) player.getTeam());
-                packetManager.sendPacket(server, movementPacket);
+                senderThread.action();
             } else {
                 if(name.equals("Login")) {
                     if(!isLoginRequestSent) {
@@ -194,6 +183,34 @@ public class GameClient extends SimpleApplication {
         }
     }
 
+    private class SendMessageThread extends Thread {
+        public SendMessageThread() {
+        }
+
+        @Override
+        public void run() {
+            while(true){}
+        }
+
+
+        void action() {
+            Vector3f redTranslation = cam.getLocation();
+            Quaternion redRotation = cam.getRotation();
+            GamePacket movementPacket = new GamePacket(redTranslation.getX(),
+                    redTranslation.getY(),
+                    redTranslation.getZ(),
+                    redRotation.getW(),
+                    redRotation.getX(),
+                    redRotation.getY(),
+                    redRotation.getZ());
+            movementPacket.setPlayerID(player.getPlayerId());
+            movementPacket.setTeam(player.getTeam());
+            movementPacket.setCurrentTime(new Date().getTime());
+            log.info("Sending = " + movementPacket);
+            packetManager.sendPacket(server, movementPacket);
+        }
+    }
+
     /**
      * TODO : assign id for current player from received packet
      */
@@ -238,20 +255,25 @@ public class GameClient extends SimpleApplication {
         public void handlePacket(Packet packet) {
             if(packet != null) {
                 GamePacket gamePacket = (GamePacket) packet;
-                client.enqueue(() -> {
-					if (player.getPlayerId() == gamePacket.getPlayerID()) {
-						return null;
-					}
-					Player player = players.get(gamePacket.getPlayerID());
-					if (player == null) {
-						player = new Player(gamePacket);
-						player.setGeometry(getNewPlayerGeometry());
-						players.put(player.getPlayerId(), player);
-					}
-					player.SetNewGamePacket(gamePacket);
+                log.info("Packet = " + gamePacket);
+                if (player.getPlayerId() != gamePacket.getPlayerID()) {
+                    Player player = players.get(gamePacket.getPlayerID());
+                    if (player == null) {
+                        player = new Player(gamePacket);
+                        player.setGeometry(getNewPlayerGeometry());
+                        players.put(player.getPlayerId(), player);
+                    }
+                    if(gamePacket.getCurrentTime() >= player.getPacketTime()) {
+                        players.get(gamePacket.getPlayerID()).setPacketTime(gamePacket.getCurrentTime());
+                        client.enqueue(() -> {
 
-                    return null;
-                });
+                            players.get(gamePacket.getPlayerID()).setNewGamePacket(gamePacket);
+
+                            return null;
+                        });
+
+                    }
+                }
             }
         }
 
@@ -296,7 +318,7 @@ public class GameClient extends SimpleApplication {
 		Geometry geometry = new Geometry("Box", box1);
 		geometry.setLocalTranslation(new Vector3f(1, -1, 1));
 		Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-		mat1.setColor("Color", ColorRGBA.Yellow);
+		mat1.setColor("Color", ColorRGBA.randomColor());
 		geometry.setMaterial(mat1);
 		rootNode.attachChild(geometry);
 		return geometry;

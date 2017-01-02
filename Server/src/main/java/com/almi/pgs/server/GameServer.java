@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import static com.almi.pgs.commons.Constants.RECEIVE_BUFFER_SIZE;
 import static com.almi.pgs.commons.Constants.SEND_BUFFER_SIZE;
@@ -44,15 +45,16 @@ public class GameServer implements Runnable {
         log.info("Max players set to " + maxPlayersNum);
         try {
             checkServerRunning();
-			ArrayList<ReliableSocket> socketsList = new ArrayList<>();
+			List<ReliableSocket> socketsList = Collections.synchronizedList(new ArrayList<>());
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             for(int i = 0; i < maxPlayersNum; ++i) {
                 ReliableSocket clientSocket = (ReliableSocket) socket.accept();
                 clientSocket.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
                 clientSocket.setSendBufferSize(SEND_BUFFER_SIZE);
 				socketsList.add(clientSocket);
-                new PlayerThread(clientSocket, i, Collections.synchronizedList(socketsList)).start();
+                new PlayerThread(clientSocket, i, socketsList).start();
             }
+            log.info("Test!!");
             while(true){}
         } catch (Exception e) {
             log.error(e.getMessage()+". Closing...");

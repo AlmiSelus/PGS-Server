@@ -855,6 +855,7 @@ public class ReliableSocket extends Socket
                         break;
                     }
                     else if (s instanceof DATSegment) {
+                        log("Next message !");
                         byte[] data = ((DATSegment) s).getData();
                         if (data.length + totalBytes > len) {
                             if (totalBytes <= 0) {
