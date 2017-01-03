@@ -11,5 +11,7 @@ public class Constants {
     public final static int RECEIVE_BUFFER_SIZE = 1024; //64kB buffer size
     public final static int SEND_BUFFER_SIZE    = 1024; //64kB buffer size
     public final static String LOGIN_PWD_SALT = "dJaF<9!=m3]o,7a&h3YE`uxdVIN(P[9:lkN37q3>fM2~844t#e8EM?{.$NE1#P5";
-    public final static boolean SILENT_MODE = false;
+    public final static boolean SILENT_MODE = true;
+	public final static double MAX_PLAYER_SPEED = 0.01;
+    public final static int ROUND_TIME = 120; //seconds
 }

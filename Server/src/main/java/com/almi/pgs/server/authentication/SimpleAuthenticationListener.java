@@ -35,11 +35,11 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
     }
 
     @Override
-    public void authenticationPassed(PacketManager packetManager, int playerID) {
+    public void authenticationPassed(PacketManager packetManager, int playerID, byte teamID) {
         log.info("Authentication passed");
         GamePacket gamePacket = new GamePacket(0,0,0,0,0,0,0);
         gamePacket.setPlayerID((byte) playerID);
-        gamePacket.setTeam((byte) 1); //assign all players to same team for now
+        gamePacket.setTeam(teamID); //assign all players to same team for now
         AuthResponsePacket authCorrect = new AuthResponsePacket((short) 200);
         authCorrect.setPlayerID(gamePacket.getPlayerID());
         authCorrect.setTeamID(gamePacket.getTeam());

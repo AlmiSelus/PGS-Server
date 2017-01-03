@@ -7,6 +7,8 @@ public class GameState implements Packet {
     private byte remainingTime;
     private byte pointsRed;
     private byte pointsBlue;
+    private byte isRunning;
+    private byte winner;
 
     public GameState() {
     }
@@ -33,5 +35,21 @@ public class GameState implements Packet {
 
     public void setPointsBlue(byte pointsBlue) {
         this.pointsBlue = pointsBlue;
+    }
+
+    public void setIsRunning(byte isRunning) {
+        this.isRunning = isRunning;
+    }
+
+    public byte getIsRunning() {
+        return isRunning;
+    }
+
+    public void setWinner(byte winner) {
+        this.winner = winner;
+    }
+
+    public byte getWinner() {
+        return winner;
     }
 }

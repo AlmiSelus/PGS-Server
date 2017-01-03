@@ -7,6 +7,6 @@ import com.almi.pgs.game.PacketManager;
  */
 public interface AuthenticationListener {
     void authenticationDataObtained(PacketManager packetManager);
-    void authenticationPassed(PacketManager packetManager, int playerID);
+    void authenticationPassed(PacketManager packetManager, int playerID, byte teamID);
     void authenticationFailed(PacketManager packetManager, String reason);
 }

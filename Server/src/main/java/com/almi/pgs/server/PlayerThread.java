@@ -32,16 +32,19 @@ public class PlayerThread extends Thread {
     private ReliableSocket socket;
     private AuthenticationLocalDatabase localDatabase = new AuthenticationLocalDatabase();
     private byte playerID;
+    private byte teamID;
+	private Player player;
     private final List<ReliableSocket> userSockets;
     private final PacketManager packetManager;
 
     private final static Object lock = new Object();
 
 
-    public PlayerThread(PacketManager pm, ReliableSocket socket, List<ReliableSocket> playerSockets) {
+    public PlayerThread(PacketManager pm, ReliableSocket socket, List<ReliableSocket> playerSockets, int teamID) {
         this.socket = socket;
         this.userSockets = playerSockets;
         packetManager = pm;
+        this.teamID = (byte) teamID;
         setDaemon(true);
     }
 
@@ -94,16 +97,10 @@ public class PlayerThread extends Thread {
                     }
 
                     synchronized (lock) {
-//                    log.info("Received from client " + packetString);
                         Packet packet = packetManager.getGeneralGamePacket(packetString);
                         if (packet != null) {
-                            log.info("Handling packet of class " + packet.getClass().getSimpleName());
-                            if (packet instanceof GamePacket) {
-                                log.info(((GamePacket) packet).getPlayerID() + " <--- uid");
-                            }
                             packetManager.handlePacket(packet);
                         }
-                        log.info("Testinnnnnggg!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                     }
                 }
             } catch (IOException e) {
@@ -125,19 +122,6 @@ public class PlayerThread extends Thread {
         }
     }
 
-    private class ServerLogoutPacketListener implements PacketListener {
-
-        @Override
-        public void handlePacket(Packet gamePacket) {
-
-        }
-
-        @Override
-        public Class<? extends Packet> packetClass() {
-            return LogoutPacket.class;
-        }
-    }
-
     private class AuthPacketListener implements PacketListener {
 
         private AuthenticationListener authListener;
@@ -155,13 +139,14 @@ public class PlayerThread extends Thread {
                 if (!optionalPlayer.isPresent()) {
                     throw new IllegalArgumentException("User does not exist");
                 }
-                Player player = optionalPlayer.get();
+                player = optionalPlayer.get();
                 if (!player.getPassword().equals(packet.getPassword())) {
+					player = null;
                     throw new IllegalArgumentException("Password incorrect!");
                 }
 
                 playerID = player.getPlayerID();
-                authListener.authenticationPassed(packetManager, player.getPlayerID());
+                authListener.authenticationPassed(packetManager, player.getPlayerID(), teamID);
 
 
             } catch (Exception e) {
@@ -182,7 +167,7 @@ public class PlayerThread extends Thread {
             userSockets.remove(socket);
             log.info("Sending logout info to all players");
             for (ReliableSocket socket : userSockets) {
-                packetManager.sendPacket(socket, new LogoutPacket(new Date().getTime(), playerID));
+                packetManager.sendPacket(socket, new LogoutPacket(new Date().getTime(), (byte) playerID));
             }
             try {
                 socket.close();
@@ -209,15 +194,19 @@ public class PlayerThread extends Thread {
 
         @Override
         public void handlePacket(Packet gamePacket) {
-            log.info("Resending to all " + gamePacket);
-			synchronized(userSockets) {
-                log.info("Connected players: " + userSockets.size());
+			try {
+				player.setNewGamePacket((GamePacket) gamePacket);
+				log.info("Resending to all " + gamePacket);
 				for (ReliableSocket socket : userSockets) {
-					packetManager.sendPacket(socket, gamePacket);
+                    if(socket != clientSocket) {
+                        packetManager.sendPacket(socket, gamePacket);
+                    }
 				}
+			} catch (Exception ex) {
+                packetManager.sendPacket(clientSocket, new LogoutPacket(new Date().getTime(), player.getPlayerID()));
+                log.info(ExceptionUtils.getStackTrace(ex));
 			}
-        }
-
+		}
         @Override
         public Class<? extends Packet> packetClass() {
             return GamePacket.class;

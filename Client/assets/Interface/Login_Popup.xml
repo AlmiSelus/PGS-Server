@@ -48,6 +48,9 @@
                     <text text="2" id="bTeamPoints" font="Interface/Fonts/Default.fnt" width="10%" height="100%" wrap="true" />
                 </panel>
             </panel>
+            <panel id="panel_winner" height="75%" width="30%" align="center" valign="center" childLayout="vertical">
+                <text text="" id="winner" font="Interface/Fonts/Default.fnt" width="100%" height="100%" wrap="true" />
+            </panel>
         </layer>
     </screen>
 </nifty>

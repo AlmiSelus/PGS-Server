@@ -240,20 +240,22 @@ public class GameClient extends SimpleApplication implements ScreenController {
 
 
         void action() {
-            Vector3f redTranslation = cam.getLocation();
-            Quaternion redRotation = cam.getRotation();
-            GamePacket movementPacket = new GamePacket(redTranslation.getX(),
-                    redTranslation.getY(),
-                    redTranslation.getZ(),
-                    redRotation.getW(),
-                    redRotation.getX(),
-                    redRotation.getY(),
-                    redRotation.getZ());
-            movementPacket.setPlayerID(player.getPlayerId());
-            movementPacket.setTeam(player.getTeam());
-            movementPacket.setCurrentTime(new Date().getTime());
-            log.info("Sending = " + movementPacket);
-            packetManager.sendPacket(server, movementPacket);
+            if(isRunning) {
+                Vector3f redTranslation = cam.getLocation();
+                Quaternion redRotation = cam.getRotation();
+                GamePacket movementPacket = new GamePacket(redTranslation.getX(),
+                        redTranslation.getY(),
+                        redTranslation.getZ(),
+                        redRotation.getW(),
+                        redRotation.getX(),
+                        redRotation.getY(),
+                        redRotation.getZ());
+                movementPacket.setPlayerID(player.getPlayerId());
+                movementPacket.setTeam(player.getTeam());
+                movementPacket.setCurrentTime(new Date().getTime());
+                log.info("Sending = " + movementPacket);
+                packetManager.sendPacket(server, movementPacket);
+            }
         }
     }
 
@@ -265,15 +267,40 @@ public class GameClient extends SimpleApplication implements ScreenController {
 
     private class ClientGameTickListener implements PacketListener {
 
+        private boolean isWinnerDisplayed = true;
+
         @Override
         public void handlePacket(Packet gamePacket) {
-            if(player != null) {
-                GameState gameState = (GameState) gamePacket;
-                int mins = gameState.getRemainingTime() / 60;
-                int sec = gameState.getRemainingTime() % 60;
-                nifty.getScreen("hud").findElementByName("remainigTime").getRenderer(TextRenderer.class).setText(mins + ":" + sec);
-                nifty.getScreen("hud").findElementByName("aTeamPoints").getRenderer(TextRenderer.class).setText(String.valueOf(gameState.getPointsBlue()));
-                nifty.getScreen("hud").findElementByName("bTeamPoints").getRenderer(TextRenderer.class).setText(String.valueOf(gameState.getPointsRed()));
+            GameState gameState = (GameState) gamePacket;
+            if (player != null) {
+                isRunning = gameState.getIsRunning() == 1;
+                flyCam.setEnabled(isRunning);
+                if(gameState.getIsRunning() == 1) {
+                    int mins = gameState.getRemainingTime() / 60;
+                    int sec = gameState.getRemainingTime() % 60;
+                    /**
+                     * Reset winner message
+                     */
+                    Screen screen = nifty.getCurrentScreen();
+                    if(screen.getScreenId().equals("hud")) {
+
+                        if (isWinnerDisplayed) {
+                            screen.findElementByName("winner").getRenderer(TextRenderer.class).setText("");
+                            isWinnerDisplayed = false;
+                        }
+                        screen.findElementByName("remainigTime").getRenderer(TextRenderer.class).setText(mins + ":" + sec);
+                        screen.findElementByName("aTeamPoints").getRenderer(TextRenderer.class).setText(String.valueOf(gameState.getPointsBlue()));
+                        screen.findElementByName("bTeamPoints").getRenderer(TextRenderer.class).setText(String.valueOf(gameState.getPointsRed()));
+                    }
+                } else {
+                    Screen screen = nifty.getCurrentScreen();
+                    if(screen.getScreenId().equals("hud")) {
+                        isWinnerDisplayed = true;
+                        String winner = "Winner : ";
+                        winner += gameState.getWinner() == 0 ? "Team Blue" : gameState.getWinner() == 2 ? "Tie!" : "Team Red";
+                        screen.findElementByName("winner").getRenderer(TextRenderer.class).setText(winner);
+                    }
+                }
             }
         }
 
@@ -357,7 +384,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
                     Player player = players.get(gamePacket.getPlayerID());
                     if (player == null) {
                         player = new Player(gamePacket);
-                        player.setGeometry(getNewPlayerGeometry());
+                        player.setGeometry(getNewPlayerGeometry(player.getTeam()));
                         players.put(player.getPlayerId(), player);
                     }
                     if(gamePacket.getCurrentTime() >= player.getPacketTime()) {
@@ -410,12 +437,15 @@ public class GameClient extends SimpleApplication implements ScreenController {
 		rootNode.addLight(al);
 	}
 
-	private Geometry getNewPlayerGeometry() {
+	private Geometry getNewPlayerGeometry(byte team) {
 		Box box1 = new Box(1, 1, 1);
 		Geometry geometry = new Geometry("Box", box1);
 		geometry.setLocalTranslation(new Vector3f(1, -1, 1));
 		Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-		mat1.setColor("Color", ColorRGBA.randomColor());
+		mat1.setColor("Color", team == 0 ?
+                new ColorRGBA((float)(34/255.0), (float)(167/255.0),(float)(240/255.0), 1.0F) :
+                new ColorRGBA((float)(239/255.0), (float)(72/255.0), (float)(54/255.0), 1.0F));
+//                ColorRGBA.Blue : ColorRGBA.Red);
 		geometry.setMaterial(mat1);
 		rootNode.attachChild(geometry);
 		return geometry;
