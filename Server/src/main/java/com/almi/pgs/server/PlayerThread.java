@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.logging.Level;
 
 /**
  * Created by Almi on 2016-12-30.
@@ -24,6 +25,7 @@ public class PlayerThread extends Thread {
     private ReliableSocket socket;
     private AuthenticationLocalDatabase localDatabase = new AuthenticationLocalDatabase();
     private int playerID;
+	private Player player;
     private final List<ReliableSocket> userSockets;
     private PacketManager packetManager = new PacketManager();
 
@@ -107,8 +109,9 @@ public class PlayerThread extends Thread {
                 if (!optionalPlayer.isPresent()) {
                     throw new IllegalArgumentException("User does not exist");
                 }
-                Player player = optionalPlayer.get();
+                player = optionalPlayer.get();
                 if (!player.getPassword().equals(packet.getPassword())) {
+					player = null;
                     throw new IllegalArgumentException("Password incorrect!");
                 }
 
@@ -137,13 +140,17 @@ public class PlayerThread extends Thread {
 
         @Override
         public void handlePacket(Packet gamePacket) {
-            log.info("Resending to all " + gamePacket);
-//			synchronized(userSockets) {
+			try {
+				player.setNewGamePacket((GamePacket) gamePacket);
+				log.info("Resending to all " + gamePacket);
 				for (ReliableSocket socket : userSockets) {
 					packetManager.sendPacket(socket, gamePacket);
 				}
-//			}
-        }
+			} catch (Exception ex) {
+				//TODO kick player
+				java.util.logging.Logger.getLogger(PlayerThread.class.getName()).log(Level.SEVERE, null, ex);
+			}
+		}
 
         @Override
         public Class<? extends Packet> packetClass() {
