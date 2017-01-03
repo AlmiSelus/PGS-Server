@@ -6,10 +6,12 @@ package com.almi.pgs.server.authentication;
 public class Player {
     private String login;
     private String password;
+    private byte playerID;
 
-    public Player(String login, String password) {
+    public Player(byte id, String login, String password) {
         this.login = login;
         this.password = password;
+        playerID = id;
     }
 
     public String getLogin() {
@@ -26,5 +28,9 @@ public class Player {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public byte getPlayerID() {
+        return playerID;
     }
 }

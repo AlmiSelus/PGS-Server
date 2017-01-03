@@ -44,6 +44,10 @@ public class Player {
 		this.geometry = geometry;
 	}
 
+	public Geometry getGeometry() {
+		return geometry;
+	}
+
 	void setNewGamePacket(GamePacket gamePacket) {
 		this.geometry.setLocalTranslation(gamePacket.getX(), gamePacket.getY(), gamePacket.getZ());
 		this.geometry.setLocalRotation(

@@ -2,10 +2,7 @@ package com.almi.pgs.client;
 
 import com.almi.pgs.commons.Constants;
 import com.almi.pgs.game.*;
-import com.almi.pgs.game.packets.AuthPacket;
-import com.almi.pgs.game.packets.AuthResponsePacket;
-import com.almi.pgs.game.packets.GamePacket;
-import com.almi.pgs.game.packets.Packet;
+import com.almi.pgs.game.packets.*;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.plugins.FileLocator;
@@ -21,14 +18,22 @@ import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.niftygui.NiftyJmeDisplay;
 import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
+import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.shadow.DirectionalLightShadowFilter;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
 import java.io.File;
+
+import de.lessvoid.nifty.Nifty;
+import de.lessvoid.nifty.controls.TextField;
+import de.lessvoid.nifty.elements.render.TextRenderer;
+import de.lessvoid.nifty.screen.Screen;
+import de.lessvoid.nifty.screen.ScreenController;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,15 +50,19 @@ import static com.almi.pgs.commons.Constants.SILENT_MODE;
 /**
  * Created by Almi on 2016-12-10.
  */
-public class GameClient extends SimpleApplication {
+public class GameClient extends SimpleApplication implements ScreenController {
 
     private final static Logger log = LoggerFactory.getLogger(GameClient.class);
-
     private Boolean isRunning = false;
     private ReliableSocket server;
     private Player player;
-
     private SendMessageThread senderThread = new SendMessageThread();
+
+    /**
+     * GUI Related stuff
+     */
+    private NiftyJmeDisplay niftyDisplay;
+    private Nifty nifty;
 
     /**
      * Packet manager manages all communication with server through ReliableSocket. Use this manager
@@ -64,11 +73,13 @@ public class GameClient extends SimpleApplication {
      * PlayerID - Player (if need arises - change value object type to whatever needed).
      * Current player does not have entry in this map!!! use other variables!
      */
-    private Map<Byte, Player> players = Collections.synchronizedMap(new HashMap<>());
+    private final Map<Byte, Player> players = Collections.synchronizedMap(new HashMap<>());
 
     public GameClient(String[] gameStringParams) {
         packetManager.addPacketListener(new ClientAuthPacketListener());
         packetManager.addPacketListener(new ClientGamePacketListener(this));
+        packetManager.addPacketListener(new ClientLogoutPacketListener(this));
+        packetManager.addPacketListener(new ClientGameTickListener());
     }
 
     @Override
@@ -91,6 +102,17 @@ public class GameClient extends SimpleApplication {
         }
         new ReceiverThread().start();
         senderThread.start();
+
+        niftyDisplay = new NiftyJmeDisplay(assetManager,
+                inputManager,
+                audioRenderer,
+                guiViewPort);
+        nifty = niftyDisplay.getNifty();
+
+        nifty.fromXml("Interface/Login_Popup.xml", "start", this);
+
+        guiViewPort.addProcessor(niftyDisplay);
+        flyCam.setDragToRotate(true);
     }
 
     @Override
@@ -135,17 +157,41 @@ public class GameClient extends SimpleApplication {
                 senderThread.action();
             } else {
                 if(name.equals("Login")) {
-                    if(!isLoginRequestSent) {
-                        AuthPacket authPacket = new AuthPacket("user1", "password1");
-                        packetManager.sendPacket(server, authPacket);
-                        log.info("Packet sent");
-                    }
+
                 } else {
                     System.out.println("Press P to unpause.");
                 }
             }
         }
     };
+
+    @Override
+    public void bind(Nifty nifty, Screen screen) {
+
+    }
+
+    @Override
+    public void onStartScreen() {
+
+    }
+
+    @Override
+    public void onEndScreen() {
+
+    }
+
+    public void tryLogIn() {
+        TextField loginBox      = nifty.getScreen("start").findNiftyControl("login", TextField.class);
+        TextField passwordBox   = nifty.getScreen("start").findNiftyControl("password", TextField.class);
+        String login = loginBox.getText();
+        String password = passwordBox.getText();
+        log.info("Login = " + login);
+        log.info("Password = " + password);
+        AuthPacket authPacket = new AuthPacket(login, password);
+        packetManager.sendPacket(server, authPacket);
+        log.info("Packet sent");
+
+    }
 
     private class ReceiverThread extends Thread {
 
@@ -211,6 +257,56 @@ public class GameClient extends SimpleApplication {
         }
     }
 
+    @Override
+    public void destroy() {
+        packetManager.sendPacket(server, new LogoutPacket(new Date().getTime(), player.getPlayerId()));
+        super.destroy();
+    }
+
+    private class ClientGameTickListener implements PacketListener {
+
+        @Override
+        public void handlePacket(Packet gamePacket) {
+            if(player != null) {
+                GameState gameState = (GameState) gamePacket;
+                int mins = gameState.getRemainingTime() / 60;
+                int sec = gameState.getRemainingTime() % 60;
+                nifty.getScreen("hud").findElementByName("remainigTime").getRenderer(TextRenderer.class).setText(mins + ":" + sec);
+                nifty.getScreen("hud").findElementByName("aTeamPoints").getRenderer(TextRenderer.class).setText(String.valueOf(gameState.getPointsBlue()));
+                nifty.getScreen("hud").findElementByName("bTeamPoints").getRenderer(TextRenderer.class).setText(String.valueOf(gameState.getPointsRed()));
+            }
+        }
+
+        @Override
+        public Class<? extends Packet> packetClass() {
+            return GameState.class;
+        }
+    }
+
+    private class ClientLogoutPacketListener implements PacketListener {
+
+        private final GameClient client;
+
+        public ClientLogoutPacketListener(GameClient client) {
+            this.client = client;
+        }
+
+        @Override
+        public void handlePacket(Packet gamePacket) {
+            LogoutPacket logoutPacket = (LogoutPacket)gamePacket;
+            synchronized (players) {
+                Spatial spatial = players.get(logoutPacket.getPlayerID()).getGeometry();
+                players.remove(logoutPacket.getPlayerID());
+                client.enqueue(() -> client.getRootNode().detachChild(spatial));
+            }
+        }
+
+        @Override
+        public Class<? extends Packet> packetClass() {
+            return LogoutPacket.class;
+        }
+    }
+
     /**
      * TODO : assign id for current player from received packet
      */
@@ -230,6 +326,7 @@ public class GameClient extends SimpleApplication {
 					player = new Player(authResponse.getPlayerID(), authResponse.getTeamID(), authResponse.getHash());
                     isLoginRequestSent = true;
                     isRunning = true;
+                    nifty.gotoScreen("hud");
                 } else {
                     //TODO proper notification for client
                     log.info(authResponse.getReason());

@@ -10,7 +10,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.OutputStream;
+import java.io.BufferedOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +31,9 @@ public class PacketManager {
                 AuthPacket.class,
                 AuthResponsePacket.class,
                 GamePacket.class,
-                GenericResponse.class
+                GenericResponse.class,
+                GameState.class,
+                LogoutPacket.class
         });
     }
 
@@ -45,9 +47,10 @@ public class PacketManager {
         createPacketTypeAdapter();
     }
 
-    public void handlePacket(Packet packet) {
+    public synchronized void handlePacket(Packet packet) {
         for (PacketListener packetListener : packetListeners) {
             if(packetListener.packetClass() == packet.getClass()) {
+                log.info("Selected packet handler " + packetListener.getClass().getSimpleName());
                 packetListener.handlePacket(packet);
                 break;
             }
@@ -86,13 +89,13 @@ public class PacketManager {
 
     public void sendPacket(ReliableSocket clientSocket, Packet packet) {
         try {
-            OutputStream os = clientSocket.getOutputStream();
+            BufferedOutputStream bos = new BufferedOutputStream(clientSocket.getOutputStream());
             String packetString = gson.toJson(packet, packetTypeToken.getType());
-			if(!SILENT_MODE) {
+            if(!SILENT_MODE) {
 				log.info("Send Packet = " + packetString);
 			}
-            os.write(packetString.getBytes());
-            os.flush();
+            bos.write(packetString.getBytes());
+            bos.flush();
         } catch(Exception e) {
             log.error(ExceptionUtils.getStackTrace(e));
         }

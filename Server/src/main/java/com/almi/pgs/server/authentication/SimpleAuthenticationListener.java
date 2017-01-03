@@ -20,13 +20,11 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
 
     private final static Logger log = LoggerFactory.getLogger(SimpleAuthenticationListener.class);
     private ReliableSocket clientSocket;
-    private int playerID;
 	private int hash;
     private List<ReliableSocket> clients = new ArrayList<>();
 
-    public SimpleAuthenticationListener(ReliableSocket socket, List<ReliableSocket> sockets, int id) {
+    public SimpleAuthenticationListener(ReliableSocket socket, List<ReliableSocket> sockets) {
         clientSocket = socket;
-        this.playerID = id;
 		this.hash = new BigInteger(30, new SecureRandom()).intValue();
         clients = sockets;
     }
@@ -37,7 +35,7 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
     }
 
     @Override
-    public void authenticationPassed(PacketManager packetManager) {
+    public void authenticationPassed(PacketManager packetManager, int playerID) {
         log.info("Authentication passed");
         GamePacket gamePacket = new GamePacket(0,0,0,0,0,0,0);
         gamePacket.setPlayerID((byte) playerID);

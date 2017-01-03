@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nifty xmlns="http://nifty-gui.sourceforge.net/nifty-1.3.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://nifty-gui.sourceforge.net/nifty-1.3.xsd http://nifty-gui.sourceforge.net/nifty-1.3.xsd">
+    <useStyles filename="nifty-default-styles.xml" />
+    <useControls filename="nifty-default-controls.xml" />
+    <screen id="start" controller="com.almi.pgs.client.GameClient">
+        <layer id="foreground" childLayout="vertical">
+            <panel id="panel_top" height="25%" width="75%" align="center" childLayout="center">
+                <text text="My Cool Game" font="Interface/Fonts/Default.fnt" width="100%" height="100%" />
+            </panel>
+            <panel id="panel_mid" height="25%" width="75%" align="center" childLayout="center">
+                <text text="Here goes some text describing the game and the rules and stuff. Incidentally, the text is quite long and needs to wrap at the end of lines. ..." font="Interface/Fonts/Default.fnt" width="100%" height="100%" wrap="true" />
+            </panel>
+            <panel height="15%" width="25%" align="center" childLayout="vertical">
+                <panel height="50%" width="100%" align="center" childLayout="horizontal">
+                    <control name="textfield" id="login" />
+                </panel>
+                <panel height="50%" width="100%" align="center" childLayout="horizontal">
+                    <control name="textfield" id="password" maxLength="20" passwordChar="*" />
+                </panel>
+            </panel>
+            <panel id="panel_bottom" height="25%" width="75%" align="center" childLayout="horizontal" >
+                <panel id="panel_bottom_left" height="50%" width="50%" valign="center" childLayout="center" visibleToMouse="true">
+                    <control name="button" label="Start" id="StartButton" align="center" valign="center">
+                        <interact onClick="tryLogin()" />
+                    </control>
+                </panel>
+                <panel id="panel_bottom_right" height="50%" width="50%" valign="center" childLayout="center" visibleToMouse="true">
+                    <control name="button" label="Quit" id="QuitButton" align="center" valign="center"/>
+                </panel>
+            </panel>
+        </layer>
+    </screen>
+    <screen id="hud">
+        <layer id="foreground" childLayout="center">
+            <panel id="panel_time" height="25%" width="20%" align="left" valign="top" childLayout="horizontal">
+                <text text="Remaining time:" font="Interface/Fonts/Default.fnt" width="100%" height="100%" wrap="true" />
+                <text text="02:00" id="remainigTime" font="Interface/Fonts/Default.fnt" width="100%" height="100%" wrap="true" />
+            </panel>
+            <panel id="panel_pts" height="15%" width="30%" align="right" valign="top" childLayout="vertical">
+                <!-- Team A -->
+                <panel height="60%" width="100%" childLayout="horizontal">
+                    <text text="A Team Points:" font="Interface/Fonts/Default.fnt" width="70%" height="100%" wrap="true" />
+                    <text text="1" id="aTeamPoints" font="Interface/Fonts/Default.fnt" width="10%" height="100%" wrap="true" />
+                </panel>
+                <!-- Team B -->
+                <panel height="60%" width="100%" childLayout="horizontal">
+                    <text text="B Team Points:" font="Interface/Fonts/Default.fnt" width="70%" height="100%" wrap="true" />
+                    <text text="2" id="bTeamPoints" font="Interface/Fonts/Default.fnt" width="10%" height="100%" wrap="true" />
+                </panel>
+            </panel>
+        </layer>
+    </screen>
+</nifty>
