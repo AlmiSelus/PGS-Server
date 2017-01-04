@@ -95,7 +95,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
             server = new ReliableSocket();
             server.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
             server.setSendBufferSize(SEND_BUFFER_SIZE);
-            server.connect(new InetSocketAddress("127.0.0.1", Constants.PORT));
+            server.connect(new InetSocketAddress("192.168.43.222", Constants.PORT));
 
         } catch (IOException e) {
             log.error(ExceptionUtils.getStackTrace(e));
@@ -255,9 +255,28 @@ public class GameClient extends SimpleApplication implements ScreenController {
                 movementPacket.setCurrentTime(new Date().getTime());
                 log.info("Sending = " + movementPacket);
                 packetManager.sendPacket(server, movementPacket);
+				switch(player.getTeam()) {
+					case 0:
+						if (redTranslation.z > 100) {
+							log.info("WINNER");
+							sendFlagPacket();
+						}
+
+					case 1:
+						if (redTranslation.z < -100) {
+							log.info("WINNER");
+							sendFlagPacket();
+						}
+				}
             }
         }
     }
+
+	private void sendFlagPacket() {
+		PlayerTakeFlagPacket packet = new PlayerTakeFlagPacket();
+		packet.setPlayerId(player.getPlayerId());
+		packetManager.sendPacket(server, packet);
+	}
 
     @Override
     public void destroy() {

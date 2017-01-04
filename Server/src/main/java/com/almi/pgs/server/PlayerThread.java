@@ -1,8 +1,10 @@
 package com.almi.pgs.server;
 
+import com.almi.pgs.game.PacketListener;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.LogoutPacket;
 import com.almi.pgs.game.packets.Packet;
+import com.almi.pgs.game.packets.PlayerTakeFlagPacket;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.almi.pgs.server.authentication.AuthenticationListener;
 import com.almi.pgs.server.authentication.SimpleAuthenticationListener;
@@ -30,15 +32,17 @@ public class PlayerThread extends Thread {
     private byte teamID;
     private final List<PlayerThread> playerThreads;
     private final PacketManager packetManager;
+	private final Game gameState;
 
     private final static Object lock = new Object();
 
 
-    public PlayerThread(PacketManager pm, ReliableSocket socket, List<PlayerThread> playerSockets, int teamID) {
+    public PlayerThread(PacketManager pm, ReliableSocket socket, List<PlayerThread> playerSockets, int teamID, Game gameState) {
         this.socket = socket;
         this.playerThreads = playerSockets;
         packetManager = pm;
         this.teamID = (byte) teamID;
+		this.gameState = gameState;
         setDaemon(true);
     }
 
@@ -91,6 +95,7 @@ public class PlayerThread extends Thread {
             this.setDaemon(true);
             packetManager.addPacketListener(new AuthPacketListener(authListener, playerThread, packetManager, playerThreads));
             packetManager.addPacketListener(new LogoutPacketListener(packetManager, playerThread));
+			packetManager.addPacketListener(new PlayerTakeFlagListener());
         }
 
         @Override
@@ -140,4 +145,17 @@ public class PlayerThread extends Thread {
             }
         }
     }
+
+	private class PlayerTakeFlagListener implements PacketListener {
+
+		@Override
+		public void handlePacket(Packet gamePacket) {
+			PlayerTakeFlagPacket packet = (PlayerTakeFlagPacket) gamePacket;
+		}
+
+		@Override
+		public Class<? extends Packet> packetClass() {
+			 return PlayerTakeFlagPacket.class;
+		}
+	}
 }

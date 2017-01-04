@@ -38,6 +38,8 @@ public class GameServer implements Runnable {
      */
     private int maxPlayersNum = 4;
 
+	private Game gameState;
+
     /**
      * Packet manager
      */
@@ -64,7 +66,7 @@ public class GameServer implements Runnable {
             ExecutorService executorService = Executors.newFixedThreadPool(maxPlayersNum);
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             new Thread(() -> {
-                Game gameState = new Game(socketsList, packetManager);
+                gameState = new Game(socketsList, packetManager);
                 while(true) {
                     try {
                         gameState.tick();
@@ -82,7 +84,7 @@ public class GameServer implements Runnable {
                         playerCountr.incrementAndGet();
                         clientSocket.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
                         clientSocket.setSendBufferSize(SEND_BUFFER_SIZE);
-                        PlayerThread playerThread = new PlayerThread(new PacketManager(), clientSocket, socketsList, playerCountr.get() %2);
+                        PlayerThread playerThread = new PlayerThread(new PacketManager(), clientSocket, socketsList, playerCountr.get() %2, gameState);
                         socketsList.add(playerThread);
                         playerThread.start();
                     } catch (Exception e) {

@@ -33,7 +33,8 @@ public class PacketManager {
                 GamePacket.class,
                 GenericResponse.class,
                 GameState.class,
-                LogoutPacket.class
+                LogoutPacket.class,
+				PlayerTakeFlagPacket.class
         });
     }
 
