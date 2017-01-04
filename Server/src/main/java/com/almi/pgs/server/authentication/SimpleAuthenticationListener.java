@@ -7,6 +7,8 @@ import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+
+import com.almi.pgs.server.PlayerThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,9 +23,9 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
     private final static Logger log = LoggerFactory.getLogger(SimpleAuthenticationListener.class);
     private ReliableSocket clientSocket;
 	private int hash;
-    private List<ReliableSocket> clients = new ArrayList<>();
+    private List<PlayerThread> clients = new ArrayList<>();
 
-    public SimpleAuthenticationListener(ReliableSocket socket, List<ReliableSocket> sockets) {
+    public SimpleAuthenticationListener(ReliableSocket socket, List<PlayerThread> sockets) {
         clientSocket = socket;
 		this.hash = new BigInteger(30, new SecureRandom()).intValue();
         clients = sockets;
@@ -51,11 +53,8 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
         /**
          * Notify all connected players that new user has joined.
          */
-        for(ReliableSocket socket : clients) {
-            if(socket != clientSocket) {
-                packetManager.sendPacket(socket, gamePacket);
-            }
-        }
+        clients.stream().filter(client -> client.getSocket() != clientSocket).forEach(client ->
+                packetManager.sendPacket(client.getSocket(), gamePacket));
     }
 
     @Override

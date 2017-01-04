@@ -60,7 +60,7 @@ public class GameServer implements Runnable {
         log.info("Max players set to " + maxPlayersNum);
         try {
             checkServerRunning();
-            List<ReliableSocket> socketsList = new CopyOnWriteArrayList<>();
+            List<PlayerThread> socketsList = new CopyOnWriteArrayList<>();
             ExecutorService executorService = Executors.newFixedThreadPool(maxPlayersNum);
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             new Thread(() -> {
@@ -82,8 +82,9 @@ public class GameServer implements Runnable {
                         playerCountr.incrementAndGet();
                         clientSocket.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
                         clientSocket.setSendBufferSize(SEND_BUFFER_SIZE);
-                        socketsList.add(clientSocket);
-                        new PlayerThread(new PacketManager(), clientSocket, socketsList, playerCountr.get() %2).start();
+                        PlayerThread playerThread = new PlayerThread(new PacketManager(), clientSocket, socketsList, playerCountr.get() %2);
+                        socketsList.add(playerThread);
+                        playerThread.start();
                     } catch (Exception e) {
                         log.info(ExceptionUtils.getStackTrace(e));
                     }

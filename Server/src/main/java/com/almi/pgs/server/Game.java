@@ -3,7 +3,6 @@ package com.almi.pgs.server;
 import com.almi.pgs.commons.Constants;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.GameState;
-import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +14,7 @@ import java.util.List;
  */
 public class Game {
     private final static Logger log = LoggerFactory.getLogger(Game.class);
-    private final List<ReliableSocket> clients;
+    private final List<PlayerThread> clients;
     private final PacketManager packetManager;
     private byte remainingTime = Constants.ROUND_TIME;
     private byte pointsBlue = 0;
@@ -23,7 +22,7 @@ public class Game {
     private byte isRunning = 1;
     private byte winnerTeam = -1;
 
-    public Game(List<ReliableSocket> clientSockets, PacketManager pm) {
+    public Game(List<PlayerThread> clientSockets, PacketManager pm) {
         clients = clientSockets;
         packetManager = pm;
     }
@@ -36,8 +35,8 @@ public class Game {
                 winnerTeam = (byte) (pointsBlue > pointsRed ? 0 : pointsRed > pointsBlue ? 1 : 2);
                 isRunning = 0;
                 toGameStatePacket(packet, this);
-                for(ReliableSocket client : clients) {
-                    packetManager.sendPacket(client, packet);
+                for(PlayerThread client : clients) {
+                    packetManager.sendPacket(client.getSocket(), packet);
                 }
                 resetGameState();
                 Thread.sleep(10 * 1000); // wait 10 seconds before starting new game
@@ -46,8 +45,8 @@ public class Game {
             }
         } else {
             toGameStatePacket(packet, this);
-            for(ReliableSocket client : clients) {
-                packetManager.sendPacket(client, packet);
+            for(PlayerThread client : clients) {
+                packetManager.sendPacket(client.getSocket(), packet);
             }
             remainingTime--;
         }

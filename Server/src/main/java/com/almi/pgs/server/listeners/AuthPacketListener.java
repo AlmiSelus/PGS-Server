@@ -4,7 +4,6 @@ import com.almi.pgs.game.PacketListener;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.AuthPacket;
 import com.almi.pgs.game.packets.Packet;
-import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.almi.pgs.server.PlayerThread;
 import com.almi.pgs.server.authentication.AuthenticationListener;
 import com.almi.pgs.server.authentication.AuthenticationLocalDatabase;
@@ -20,24 +19,19 @@ import java.util.Optional;
  */
 public class AuthPacketListener implements PacketListener {
     private final static Logger log = LoggerFactory.getLogger(AuthPacketListener.class);
-    private final ReliableSocket socket;
-    private final List<ReliableSocket> userSockets;
+    private final List<PlayerThread> clients;
     private AuthenticationListener authListener;
     private PlayerThread playerThread;
     private PacketManager packetManager;
-    private byte teamID;
 
     private AuthenticationLocalDatabase localDatabase = new AuthenticationLocalDatabase();
 
     public AuthPacketListener(AuthenticationListener authenticationListener,
-                              PlayerThread playerThread, PacketManager packetManager, byte teamID, ReliableSocket socket,
-                              List<ReliableSocket> userSockets) {
+                              PlayerThread playerThread, PacketManager packetManager, List<PlayerThread> userSockets) {
         this.authListener = authenticationListener;
         this.playerThread = playerThread;
         this.packetManager = packetManager;
-        this.teamID = teamID;
-        this.socket = socket;
-        this.userSockets = userSockets;
+        this.clients = userSockets;
     }
 
     @Override
@@ -55,8 +49,8 @@ public class AuthPacketListener implements PacketListener {
             }
 
             playerThread.setPlayerID(player.getPlayerID());
-            packetManager.addPacketListener(new GamePacketListener(socket, packetManager, userSockets, player));
-            authListener.authenticationPassed(packetManager, player.getPlayerID(), teamID);
+            packetManager.addPacketListener(new GamePacketListener(playerThread.getSocket(), packetManager, clients, player));
+            authListener.authenticationPassed(packetManager, player.getPlayerID(), playerThread.getTeamID());
 
 
         } catch (Exception e) {

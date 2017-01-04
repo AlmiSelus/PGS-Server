@@ -4,7 +4,6 @@ import com.almi.pgs.game.PacketListener;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.LogoutPacket;
 import com.almi.pgs.game.packets.Packet;
-import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.almi.pgs.server.PlayerThread;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
@@ -28,10 +27,10 @@ public class LogoutPacketListener implements PacketListener {
 
     @Override
     public void handlePacket(Packet gamePacket) {
-        playerThread.getUserSockets().remove(playerThread.getSocket());
+        playerThread.getPlayerThreads().remove(playerThread);
         log.info("Sending logout info to all players");
-        for (ReliableSocket socket : playerThread.getUserSockets()) {
-            packetManager.sendPacket(socket, new LogoutPacket(new Date().getTime(), playerThread.getPlayerID()));
+        for (PlayerThread client : playerThread.getPlayerThreads()) {
+            packetManager.sendPacket(client.getSocket(), new LogoutPacket(new Date().getTime(), playerThread.getPlayerID()));
         }
         try {
             playerThread.getSocket().close();

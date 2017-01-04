@@ -1,6 +1,5 @@
 package com.almi.pgs.server;
 
-import com.almi.pgs.game.PacketListener;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.LogoutPacket;
 import com.almi.pgs.game.packets.Packet;
@@ -9,6 +8,7 @@ import com.almi.pgs.server.authentication.AuthenticationListener;
 import com.almi.pgs.server.authentication.SimpleAuthenticationListener;
 import com.almi.pgs.server.listeners.AuthPacketListener;
 import com.almi.pgs.server.listeners.LogoutPacketListener;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,15 +28,15 @@ public class PlayerThread extends Thread {
     private ReliableSocket socket;
     private byte playerID;
     private byte teamID;
-    private final List<ReliableSocket> userSockets;
+    private final List<PlayerThread> playerThreads;
     private final PacketManager packetManager;
 
     private final static Object lock = new Object();
 
 
-    public PlayerThread(PacketManager pm, ReliableSocket socket, List<ReliableSocket> playerSockets, int teamID) {
+    public PlayerThread(PacketManager pm, ReliableSocket socket, List<PlayerThread> playerSockets, int teamID) {
         this.socket = socket;
-        this.userSockets = playerSockets;
+        this.playerThreads = playerSockets;
         packetManager = pm;
         this.teamID = (byte) teamID;
         setDaemon(true);
@@ -45,33 +45,51 @@ public class PlayerThread extends Thread {
     @Override
     public void run() {
         try {
-            new PlayerSocketReaderThread(socket, userSockets, this).start();
+            new PlayerSocketReaderThread(socket, playerThreads, this).start();
             log.info("Threads started");
         } catch (Exception e) {
             interrupt();
-            log.error("Server error");
+            try {
+                join();
+            } catch (InterruptedException e1) {
+                log.info(ExceptionUtils.getStackTrace(e1));
+            }
         }
     }
 
-    public List<ReliableSocket> getUserSockets() {
-        return userSockets;
+    public List<PlayerThread> getPlayerThreads() {
+        return playerThreads;
     }
 
     public ReliableSocket getSocket() {
         return socket;
     }
 
+    public byte getTeamID() {
+        return teamID;
+    }
+
+    public byte getPlayerID() {
+        return playerID;
+    }
+
+    public void setPlayerID(byte playerID) {
+        this.playerID = playerID;
+    }
+
     private class PlayerSocketReaderThread extends Thread {
 
+        private final PlayerThread playerThread;
         private AuthenticationListener authListener;
 
         private ReliableSocket socket;
 
-        public PlayerSocketReaderThread(ReliableSocket socket, List<ReliableSocket> sockets, PlayerThread playerThread) {
+        public PlayerSocketReaderThread(ReliableSocket socket, List<PlayerThread> sockets, PlayerThread playerThread) {
             this.socket = socket;
             this.authListener = new SimpleAuthenticationListener(socket, sockets);
+            this.playerThread = playerThread;
             this.setDaemon(true);
-            packetManager.addPacketListener(new AuthPacketListener(authListener, playerThread, packetManager, teamID, socket, userSockets));
+            packetManager.addPacketListener(new AuthPacketListener(authListener, playerThread, packetManager, playerThreads));
             packetManager.addPacketListener(new LogoutPacketListener(packetManager, playerThread));
         }
 
@@ -113,21 +131,13 @@ public class PlayerThread extends Thread {
                         log.info("Socket has been closed. Why Am I even here?");
                     }
                 }
-                userSockets.remove(socket);
+                playerThreads.remove(playerThread);
                 log.info("Sending logout info to all players");
-                for (ReliableSocket socket : userSockets) {
-                    packetManager.sendPacket(socket, new LogoutPacket(new Date().getTime(), playerID));
+                for (PlayerThread client : playerThreads) {
+                    packetManager.sendPacket(client.getSocket(), new LogoutPacket(new Date().getTime(), playerID));
                 }
                 interrupt();
             }
         }
-    }
-
-    public byte getPlayerID() {
-        return playerID;
-    }
-
-    public void setPlayerID(byte playerID) {
-        this.playerID = playerID;
     }
 }

@@ -6,6 +6,7 @@ import com.almi.pgs.game.packets.GamePacket;
 import com.almi.pgs.game.packets.LogoutPacket;
 import com.almi.pgs.game.packets.Packet;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
+import com.almi.pgs.server.PlayerThread;
 import com.almi.pgs.server.authentication.Player;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
@@ -22,10 +23,10 @@ public class GamePacketListener implements PacketListener {
 
     private ReliableSocket clientSocket;
     private PacketManager packetManager;
-    private List<ReliableSocket> userSockets;
+    private List<PlayerThread> userSockets;
     private Player player;
 
-    public GamePacketListener(ReliableSocket socket, PacketManager packetManager, List<ReliableSocket> sockets, Player player) {
+    public GamePacketListener(ReliableSocket socket, PacketManager packetManager, List<PlayerThread> sockets, Player player) {
         this.clientSocket = socket;
         this.packetManager = packetManager;
         this.userSockets = sockets;
@@ -37,9 +38,9 @@ public class GamePacketListener implements PacketListener {
         try {
             player.setNewGamePacket((GamePacket) gamePacket);
             log.info("Resending to all " + gamePacket);
-            for (ReliableSocket socket : userSockets) {
-                if(socket != clientSocket) {
-                    packetManager.sendPacket(socket, gamePacket);
+            for (PlayerThread client : userSockets) {
+                if(client.getSocket() != clientSocket) {
+                    packetManager.sendPacket(client.getSocket(), gamePacket);
                 }
             }
         } catch (Exception ex) {

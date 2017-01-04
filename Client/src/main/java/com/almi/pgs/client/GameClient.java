@@ -322,9 +322,11 @@ public class GameClient extends SimpleApplication implements ScreenController {
         public void handlePacket(Packet gamePacket) {
             LogoutPacket logoutPacket = (LogoutPacket)gamePacket;
             synchronized (players) {
-                Spatial spatial = players.get(logoutPacket.getPlayerID()).getGeometry();
-                players.remove(logoutPacket.getPlayerID());
-                client.enqueue(() -> client.getRootNode().detachChild(spatial));
+                if (players.containsKey(logoutPacket.getPlayerID())) {
+                    Spatial spatial = players.get(logoutPacket.getPlayerID()).getGeometry();
+                    players.remove(logoutPacket.getPlayerID());
+                    client.enqueue(() -> client.getRootNode().detachChild(spatial));
+                }
             }
         }
 
