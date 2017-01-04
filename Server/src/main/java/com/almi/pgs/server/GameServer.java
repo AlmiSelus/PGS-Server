@@ -2,6 +2,7 @@ package com.almi.pgs.server;
 
 import com.almi.pgs.commons.Constants;
 import com.almi.pgs.game.PacketManager;
+import com.almi.pgs.game.packets.GameState;
 import com.almi.pgs.germancoding.rudp.ReliableServerSocket;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -60,33 +61,33 @@ public class GameServer implements Runnable {
         try {
             checkServerRunning();
             List<ReliableSocket> socketsList = new CopyOnWriteArrayList<>();
-            GameState gameState = new GameState(socketsList, packetManager);
-            ExecutorService executorService = Executors.newCachedThreadPool();
+            ExecutorService executorService = Executors.newFixedThreadPool(maxPlayersNum);
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
+            new Thread(() -> {
+                Game gameState = new Game(socketsList, packetManager);
+                while(true) {
+                    try {
+                        gameState.tick();
+                        Thread.sleep(Constants.TICK_TIME);
+                    } catch (Exception e) {
+                        log.info(ExceptionUtils.getStackTrace(e));
+                    }
+                }
+            }).start();
 
-            for (int i = 0; i < maxPlayersNum; ++i) {
-                int finalI = i;
+            while(true){
+                ReliableSocket clientSocket = (ReliableSocket) socket.accept();
                 executorService.execute(() -> {
                     try {
-                        ReliableSocket clientSocket = (ReliableSocket) socket.accept();
+                        playerCountr.incrementAndGet();
                         clientSocket.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
                         clientSocket.setSendBufferSize(SEND_BUFFER_SIZE);
                         socketsList.add(clientSocket);
-                        log.info("Player log");
-                        new PlayerThread(new PacketManager(), clientSocket, socketsList, finalI %2).start();
+                        new PlayerThread(new PacketManager(), clientSocket, socketsList, playerCountr.get() %2).start();
                     } catch (Exception e) {
                         log.info(ExceptionUtils.getStackTrace(e));
                     }
                 });
-            }
-            log.info("Test!!");
-            while(true){
-                try{
-                    gameState.tick();
-                    Thread.sleep(1000);
-                }catch(Exception e) {
-                    log.info(ExceptionUtils.getStackTrace(e));
-                }
             }
         } catch (Exception e) {
             log.error(e.getMessage()+". Closing...");
@@ -106,64 +107,5 @@ public class GameServer implements Runnable {
             }
         }
     }
-
-    private class GameState {
-        private final List<ReliableSocket>  clients;
-        private final PacketManager         packetManager;
-        private com.almi.pgs.game.packets.GameState packet;
-        private byte remainingTime = Constants.ROUND_TIME;
-        private byte pointsBlue = 0;
-        private byte pointsRed = 0;
-        private byte isRunning = 1;
-        private byte winnerTeam = -1;
-
-        private GameState(List<ReliableSocket> clientSockets, PacketManager pm) {
-            clients = clientSockets;
-            packetManager = pm;
-        }
-
-        private synchronized void tick() {
-            packet = new com.almi.pgs.game.packets.GameState();
-
-            if(remainingTime == 0) {
-                try {
-                    winnerTeam = (byte) (pointsBlue > pointsRed ? 0 : pointsRed > pointsBlue ? 1 : 2);
-                    isRunning = 0;
-                    toGameStatePacket(packet, this);
-                    for(ReliableSocket client : clients) {
-                        packetManager.sendPacket(client, packet);
-                    }
-                    resetGameState();
-                    Thread.sleep(10 * 1000); // wait 10 seconds before starting new game
-                } catch (Exception e) {
-                    log.info(ExceptionUtils.getStackTrace(e));
-                }
-            } else {
-                toGameStatePacket(packet, this);
-                for(ReliableSocket client : clients) {
-                    packetManager.sendPacket(client, packet);
-                }
-                remainingTime--;
-            }
-        }
-
-        private void resetGameState() {
-            remainingTime = Constants.ROUND_TIME;
-            isRunning = 1;
-            winnerTeam = -1;
-            pointsBlue = 0;
-            pointsRed = 0;
-        }
-
-        private synchronized void toGameStatePacket(com.almi.pgs.game.packets.GameState packet, GameState gameState) {
-            packet.setRemainingTime(gameState.remainingTime);
-            packet.setPointsBlue(gameState.pointsBlue);
-            packet.setPointsRed(gameState.pointsRed);
-            packet.setIsRunning(isRunning);
-            packet.setWinner(winnerTeam);
-        }
-    }
-
-
 
 }

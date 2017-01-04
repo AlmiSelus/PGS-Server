@@ -14,4 +14,5 @@ public class Constants {
     public final static boolean SILENT_MODE = true;
 	public final static double MAX_PLAYER_SPEED = 0.01;
     public final static int ROUND_TIME = 120; //seconds
+    public static final long TICK_TIME = 1000;
 }
