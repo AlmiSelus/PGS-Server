@@ -4,6 +4,7 @@ import com.almi.pgs.game.PacketListener;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.AuthPacket;
 import com.almi.pgs.game.packets.Packet;
+import com.almi.pgs.server.Game;
 import com.almi.pgs.server.PlayerThread;
 import com.almi.pgs.server.authentication.AuthenticationListener;
 import com.almi.pgs.server.authentication.AuthenticationLocalDatabase;
@@ -23,15 +24,17 @@ public class AuthPacketListener implements PacketListener {
     private AuthenticationListener authListener;
     private PlayerThread playerThread;
     private PacketManager packetManager;
-
+    private Game game;
     private AuthenticationLocalDatabase localDatabase = new AuthenticationLocalDatabase();
 
     public AuthPacketListener(AuthenticationListener authenticationListener,
-                              PlayerThread playerThread, PacketManager packetManager, List<PlayerThread> userSockets) {
+                              PlayerThread playerThread, PacketManager packetManager, List<PlayerThread> userSockets,
+                              Game game) {
         this.authListener = authenticationListener;
         this.playerThread = playerThread;
         this.packetManager = packetManager;
         this.clients = userSockets;
+        this.game = game;
     }
 
     @Override
@@ -49,7 +52,7 @@ public class AuthPacketListener implements PacketListener {
             }
 
             playerThread.setPlayerID(player.getPlayerID());
-            packetManager.addPacketListener(new GamePacketListener(playerThread.getSocket(), packetManager, clients, player));
+            packetManager.addPacketListener(new GamePacketListener(playerThread.getSocket(), packetManager, clients, player, game));
             authListener.authenticationPassed(packetManager, player.getPlayerID(), playerThread.getTeamID());
 
 

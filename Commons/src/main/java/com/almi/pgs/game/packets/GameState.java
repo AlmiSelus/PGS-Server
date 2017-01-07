@@ -1,23 +1,32 @@
 package com.almi.pgs.game.packets;
 
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Created by Almi on 2017-01-03.
  */
 public class GameState implements Packet {
-    private byte remainingTime;
+    private int remainingTime;
     private byte pointsRed;
     private byte pointsBlue;
     private byte isRunning;
     private byte winner;
+    private Map<Byte, Vector3f> positionMap = new HashMap<>();
+    private Map<Byte, Quaternion> rotationMap = new HashMap<>();
 
     public GameState() {
     }
 
-    public byte getRemainingTime() {
+    public int getRemainingTime() {
         return remainingTime;
     }
 
-    public void setRemainingTime(byte remainingTime) {
+    public void setRemainingTime(int remainingTime) {
         this.remainingTime = remainingTime;
     }
 
@@ -51,5 +60,22 @@ public class GameState implements Packet {
 
     public byte getWinner() {
         return winner;
+    }
+
+
+    public Map<Byte, Vector3f> getPositionMap() {
+        return positionMap;
+    }
+
+    public void setPositionMap(Map<Byte, Vector3f> positionMap) {
+        this.positionMap = positionMap;
+    }
+
+    public Map<Byte, Quaternion> getRotationMap() {
+        return rotationMap;
+    }
+
+    public void setRotationMap(Map<Byte, Quaternion> rotationMap) {
+        this.rotationMap = rotationMap;
     }
 }

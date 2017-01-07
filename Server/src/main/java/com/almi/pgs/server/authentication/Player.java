@@ -79,4 +79,12 @@ public class Player {
 		} catch (java.lang.NullPointerException e) {
 		}
 	}
+
+	public Vector3f getPosition() {
+		return position;
+	}
+
+	public Quaternion getRotation() {
+		return rotation;
+	}
 }

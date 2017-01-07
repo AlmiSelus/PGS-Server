@@ -5,7 +5,6 @@ import com.jme3.math.Quaternion;
 import com.jme3.scene.Geometry;
 
 /**
- *
  * @author Konrad
  */
 public class Player {

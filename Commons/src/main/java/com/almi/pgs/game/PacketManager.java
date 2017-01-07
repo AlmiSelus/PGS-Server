@@ -51,7 +51,9 @@ public class PacketManager {
     public synchronized void handlePacket(Packet packet) {
         for (PacketListener packetListener : packetListeners) {
             if(packetListener.packetClass() == packet.getClass()) {
-                log.info("Selected packet handler " + packetListener.getClass().getSimpleName());
+                if(!SILENT_MODE) {
+                    log.info("Selected packet handler " + packetListener.getClass().getSimpleName());
+                }
                 packetListener.handlePacket(packet);
                 break;
             }
@@ -77,7 +79,8 @@ public class PacketManager {
 
     public Packet getGeneralGamePacket(String stringified) {
         try {
-            String receivedPacketString = Utils.stripJson(stringified);
+
+            String receivedPacketString = stringified.replace("**", "");
             if(!SILENT_MODE) {
                 log.info("Received Packet = " + receivedPacketString);
             }
@@ -91,7 +94,7 @@ public class PacketManager {
     public void sendPacket(ReliableSocket clientSocket, Packet packet) {
         try {
             BufferedOutputStream bos = new BufferedOutputStream(clientSocket.getOutputStream());
-            String packetString = gson.toJson(packet, packetTypeToken.getType());
+            String packetString = gson.toJson(packet, packetTypeToken.getType()) + "**";
             if(!SILENT_MODE) {
 				log.info("Send Packet = " + packetString);
 			}

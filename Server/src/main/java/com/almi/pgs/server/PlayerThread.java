@@ -2,6 +2,7 @@ package com.almi.pgs.server;
 
 import com.almi.pgs.game.PacketListener;
 import com.almi.pgs.game.PacketManager;
+import com.almi.pgs.game.packets.GameState;
 import com.almi.pgs.game.packets.LogoutPacket;
 import com.almi.pgs.game.packets.Packet;
 import com.almi.pgs.game.packets.PlayerTakeFlagPacket;
@@ -93,7 +94,7 @@ public class PlayerThread extends Thread {
             this.authListener = new SimpleAuthenticationListener(socket, sockets);
             this.playerThread = playerThread;
             this.setDaemon(true);
-            packetManager.addPacketListener(new AuthPacketListener(authListener, playerThread, packetManager, playerThreads));
+            packetManager.addPacketListener(new AuthPacketListener(authListener, playerThread, packetManager, playerThreads, gameState));
             packetManager.addPacketListener(new LogoutPacketListener(packetManager, playerThread));
 			packetManager.addPacketListener(new PlayerTakeFlagListener());
         }
@@ -115,7 +116,7 @@ public class PlayerThread extends Thread {
                         byte[] buffer = new byte[1024];
                         int c = is.read(buffer);
                         packetString += new String(buffer, 0, c);
-                        if(packetString.contains("}")) {
+                        if(packetString.contains("}**")) {
                             end = true;
                         }
                     }
