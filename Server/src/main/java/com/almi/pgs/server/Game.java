@@ -3,6 +3,7 @@ package com.almi.pgs.server;
 import com.almi.pgs.commons.Constants;
 import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.GameState;
+import com.almi.pgs.game.packets.PlayerTeleportPacket;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,21 @@ public class Game {
             remainingTime--;
         }
     }
+
+	public synchronized void addPoints(byte teamId) {
+		switch (teamId) {
+			case 1:
+				pointsBlue++;
+				break;
+			case 2:
+				pointsRed++;
+				break;
+		}
+		PlayerTeleportPacket pt = new PlayerTeleportPacket();
+		for (PlayerThread client : clients) {
+			packetManager.sendPacket(client.getSocket(), pt);
+		}
+	}
 
     private void resetGameState() {
         remainingTime = Constants.ROUND_TIME;

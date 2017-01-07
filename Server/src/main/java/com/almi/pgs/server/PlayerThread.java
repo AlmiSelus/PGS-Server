@@ -151,6 +151,7 @@ public class PlayerThread extends Thread {
 		@Override
 		public void handlePacket(Packet gamePacket) {
 			PlayerTakeFlagPacket packet = (PlayerTakeFlagPacket) gamePacket;
+			gameState.addPoints(teamID);
 		}
 
 		@Override

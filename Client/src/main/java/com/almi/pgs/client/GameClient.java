@@ -80,6 +80,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
         packetManager.addPacketListener(new ClientGamePacketListener(this));
         packetManager.addPacketListener(new ClientLogoutPacketListener(this));
         packetManager.addPacketListener(new ClientGameTickListener());
+		packetManager.addPacketListener(new PlayerTeleportListener());
     }
 
     @Override
@@ -95,7 +96,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
             server = new ReliableSocket();
             server.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
             server.setSendBufferSize(SEND_BUFFER_SIZE);
-            server.connect(new InetSocketAddress("192.168.43.222", Constants.PORT));
+            server.connect(new InetSocketAddress("127.0.0.1", Constants.PORT));
 
         } catch (IOException e) {
             log.error(ExceptionUtils.getStackTrace(e));
@@ -242,6 +243,10 @@ public class GameClient extends SimpleApplication implements ScreenController {
         void action() {
             if(isRunning) {
                 Vector3f redTranslation = cam.getLocation();
+
+				redTranslation.y = -5f;
+				cam.setLocation(redTranslation);
+
                 Quaternion redRotation = cam.getRotation();
                 GamePacket movementPacket = new GamePacket(redTranslation.getX(),
                         redTranslation.getY(),
@@ -276,6 +281,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
 		PlayerTakeFlagPacket packet = new PlayerTakeFlagPacket();
 		packet.setPlayerId(player.getPlayerId());
 		packetManager.sendPacket(server, packet);
+		isRunning = false;
 	}
 
     @Override
@@ -326,6 +332,23 @@ public class GameClient extends SimpleApplication implements ScreenController {
         @Override
         public Class<? extends Packet> packetClass() {
             return GameState.class;
+        }
+    }
+
+	private class PlayerTeleportListener implements PacketListener {
+
+        private boolean isWinnerDisplayed = true;
+
+        @Override
+        public void handlePacket(Packet gamePacket) {
+            PlayerTeleportPacket pt = (PlayerTeleportPacket) gamePacket;
+			cam.setLocation(new Vector3f(0f, -5f, player.getTeam() == 0 ? -110 : 110));
+			cam.lookAt(new Vector3f(0f, -5f, 0f), new Vector3f(0f, 1f, 0f));
+        }
+
+        @Override
+        public Class<? extends Packet> packetClass() {
+			return PlayerTeleportPacket.class;
         }
     }
 
