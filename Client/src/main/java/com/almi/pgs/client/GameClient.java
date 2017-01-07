@@ -46,6 +46,9 @@ import java.util.*;
 import static com.almi.pgs.commons.Constants.RECEIVE_BUFFER_SIZE;
 import static com.almi.pgs.commons.Constants.SEND_BUFFER_SIZE;
 import static com.almi.pgs.commons.Constants.SILENT_MODE;
+import com.jme3.collision.CollisionResult;
+import com.jme3.collision.CollisionResults;
+import com.jme3.math.Ray;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -129,10 +132,10 @@ public class GameClient extends SimpleApplication implements ScreenController {
         inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_D));
 		inputManager.addMapping("Forward",  new KeyTrigger(KeyInput.KEY_W));
 		inputManager.addMapping("Backward",  new KeyTrigger(KeyInput.KEY_S));
-        inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE), new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("Space", new KeyTrigger(KeyInput.KEY_SPACE));
         // Add the names to the action listener.
         inputManager.addListener(actionListener,"Pause");
-        inputManager.addListener(analogListener, "Login", "Left", "Right", "Left", "Forward", "Backward");
+        inputManager.addListener(analogListener, "Login", "Left", "Right", "Left", "Forward", "Backward", "Space");
 
     }
 
@@ -146,24 +149,36 @@ public class GameClient extends SimpleApplication implements ScreenController {
     private AnalogListener analogListener = new AnalogListener() {
         public void onAnalog(String name, float value, float tpf) {
             if (isRunning) {
-                if (name.equals("Rotate")) {
-
-                }
-                if (name.equals("Right")) {
-
-                }
-                if (name.equals("Left")) {
-
+                if (name.equals("Space")) {
+					shoot();
                 }
                 senderThread.action();
-            } else {
-                if(name.equals("Login")) {
-
-                } else {
-                    System.out.println("Press P to unpause.");
-                }
             }
         }
+
+		private void shoot() {
+			try {
+				CollisionResults results = new CollisionResults();
+				Ray ray = new Ray(cam.getLocation(), cam.getDirection());
+				rootNode.collideWith(ray, results);
+				System.out.println("----- Collisions? " + results.size() + "-----");
+				for (int i = 0; i < results.size(); i++) {
+					float dist = results.getCollision(i).getDistance();
+					Vector3f pt = results.getCollision(i).getContactPoint();
+					String hit = results.getCollision(i).getGeometry().getName();
+					System.out.println("* Collision #" + i);
+					System.out.println("  You shot " + hit + " at " + pt + ", " + dist + " wu away.");
+				}
+				if (results.size() > 0) {
+					CollisionResult closest = results.getClosestCollision();
+					byte victimId = (byte) Integer.parseInt(closest.getGeometry().getName());
+					packetManager.sendPacket(server, new ShootPacket(player.getPlayerId(), victimId));
+
+				}
+			} catch (java.lang.NumberFormatException e) {
+
+			}
+		}
     };
 
     @Override
@@ -420,30 +435,33 @@ public class GameClient extends SimpleApplication implements ScreenController {
         }
 
         @Override
-        public void handlePacket(Packet packet) {
-            if(packet != null) {
-                GamePacket gamePacket = (GamePacket) packet;
-                log.info("Packet = " + gamePacket);
-                if (player.getPlayerId() != gamePacket.getPlayerID()) {
-                    Player player = players.get(gamePacket.getPlayerID());
-                    if (player == null) {
-                        player = new Player(gamePacket);
-                        player.setGeometry(getNewPlayerGeometry(player.getTeam()));
-                        players.put(player.getPlayerId(), player);
-                    }
-                    if(gamePacket.getCurrentTime() >= player.getPacketTime()) {
-                        players.get(gamePacket.getPlayerID()).setPacketTime(gamePacket.getCurrentTime());
-                        client.enqueue(() -> {
+       public void handlePacket(Packet packet) {
+			try {
+				if (packet != null) {
+					GamePacket gamePacket = (GamePacket) packet;
+					log.info("Packet = " + gamePacket);
+					if (player.getPlayerId() != gamePacket.getPlayerID()) {
+						Player player = players.get(gamePacket.getPlayerID());
+						if (player == null) {
+							player = new Player(gamePacket);
+							player.setGeometry(getNewPlayerGeometry(player));
+							players.put(player.getPlayerId(), player);
+						}
+						if (gamePacket.getCurrentTime() >= player.getPacketTime()) {
+							players.get(gamePacket.getPlayerID()).setPacketTime(gamePacket.getCurrentTime());
+							client.enqueue(() -> {
 
-                            players.get(gamePacket.getPlayerID()).setNewGamePacket(gamePacket);
+								players.get(gamePacket.getPlayerID()).setNewGamePacket(gamePacket);
 
-                            return null;
-                        });
+								return null;
+							});
 
-                    }
-                }
-            }
-        }
+						}
+					}
+				}
+			} catch (java.lang.NullPointerException e) {
+			}
+		}
 
         @Override
         public Class<? extends Packet> packetClass() {
@@ -481,12 +499,12 @@ public class GameClient extends SimpleApplication implements ScreenController {
 		rootNode.addLight(al);
 	}
 
-	private Geometry getNewPlayerGeometry(byte team) {
+	private Geometry getNewPlayerGeometry(Player player) {
 		Box box1 = new Box(1, 1, 1);
-		Geometry geometry = new Geometry("Box", box1);
+		Geometry geometry = new Geometry(player.getPlayerId()+"", box1);
 		geometry.setLocalTranslation(new Vector3f(1, -1, 1));
 		Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-		mat1.setColor("Color", team == 0 ?
+		mat1.setColor("Color", player.getTeam() == 0 ?
                 new ColorRGBA((float)(34/255.0), (float)(167/255.0),(float)(240/255.0), 1.0F) :
                 new ColorRGBA((float)(239/255.0), (float)(72/255.0), (float)(54/255.0), 1.0F));
 //                ColorRGBA.Blue : ColorRGBA.Red);

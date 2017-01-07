@@ -36,6 +36,7 @@ public class PacketManager {
                 LogoutPacket.class,
 				PlayerTakeFlagPacket.class,
 				PlayerTeleportPacket.class,
+				ShootPacket.class,
         });
     }
 
