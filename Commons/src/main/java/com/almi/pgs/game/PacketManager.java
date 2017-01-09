@@ -34,7 +34,9 @@ public class PacketManager {
                 GenericResponse.class,
                 GameState.class,
                 LogoutPacket.class,
-				PlayerTakeFlagPacket.class
+				PlayerTakeFlagPacket.class,
+				PlayerTeleportPacket.class,
+				ShootPacket.class,
         });
     }
 

@@ -5,6 +5,7 @@ import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.GameState;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.almi.pgs.game.packets.PlayerTeleportPacket;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +106,21 @@ public class Game {
     public void setWinnerTeam(byte winnerTeam) {
         this.winnerTeam = winnerTeam;
     }
+
+	public synchronized void addPoints(byte teamId) {
+		switch (teamId) {
+			case 1:
+				pointsBlue++;
+				break;
+			case 2:
+				pointsRed++;
+				break;
+		}
+		PlayerTeleportPacket pt = new PlayerTeleportPacket();
+		for (PlayerThread client : clients) {
+			packetManager.sendPacket(client.getSocket(), pt);
+		}
+	}
 
     private void resetGameState() {
         remainingTime = Constants.ROUND_TIME;

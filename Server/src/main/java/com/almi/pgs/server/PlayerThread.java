@@ -6,6 +6,8 @@ import com.almi.pgs.game.packets.GameState;
 import com.almi.pgs.game.packets.LogoutPacket;
 import com.almi.pgs.game.packets.Packet;
 import com.almi.pgs.game.packets.PlayerTakeFlagPacket;
+import com.almi.pgs.game.packets.PlayerTeleportPacket;
+import com.almi.pgs.game.packets.ShootPacket;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.almi.pgs.server.authentication.AuthenticationListener;
 import com.almi.pgs.server.authentication.SimpleAuthenticationListener;
@@ -97,6 +99,7 @@ public class PlayerThread extends Thread {
             packetManager.addPacketListener(new AuthPacketListener(authListener, playerThread, packetManager, playerThreads, gameState));
             packetManager.addPacketListener(new LogoutPacketListener(packetManager, playerThread));
 			packetManager.addPacketListener(new PlayerTakeFlagListener());
+			packetManager.addPacketListener(new ShootListener());
         }
 
         @Override
@@ -152,11 +155,29 @@ public class PlayerThread extends Thread {
 		@Override
 		public void handlePacket(Packet gamePacket) {
 			PlayerTakeFlagPacket packet = (PlayerTakeFlagPacket) gamePacket;
+			gameState.addPoints(teamID);
 		}
 
 		@Override
 		public Class<? extends Packet> packetClass() {
 			 return PlayerTakeFlagPacket.class;
+		}
+	}
+
+	private class ShootListener implements PacketListener {
+		@Override
+		public void handlePacket(Packet gamePacket) {
+			ShootPacket packet = (ShootPacket) gamePacket;
+			for (PlayerThread client : playerThreads) {
+				if (client.getPlayerID() == packet.getVictimId()) {
+					packetManager.sendPacket(client.getSocket(), new PlayerTeleportPacket());
+				}
+			}
+		}
+
+		@Override
+		public Class<? extends Packet> packetClass() {
+			 return ShootPacket.class;
 		}
 	}
 }

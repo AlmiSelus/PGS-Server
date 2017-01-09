@@ -1,34 +1,32 @@
 package com.almi.pgs.client;
 
 import com.almi.pgs.commons.Constants;
-import com.almi.pgs.game.*;
+import com.almi.pgs.game.PacketListener;
+import com.almi.pgs.game.PacketManager;
 import com.almi.pgs.game.packets.*;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.plugins.FileLocator;
+import com.jme3.collision.CollisionResult;
+import com.jme3.collision.CollisionResults;
 import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
-import com.jme3.input.controls.ActionListener;
-import com.jme3.input.controls.AnalogListener;
-import com.jme3.input.controls.KeyTrigger;
-import com.jme3.input.controls.MouseButtonTrigger;
+import com.jme3.input.controls.*;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Quaternion;
+import com.jme3.math.Ray;
 import com.jme3.math.Vector3f;
 import com.jme3.niftygui.NiftyJmeDisplay;
 import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
-import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.shadow.DirectionalLightShadowFilter;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
-import java.io.File;
-
 import de.lessvoid.nifty.Nifty;
 import de.lessvoid.nifty.controls.TextField;
 import de.lessvoid.nifty.elements.Element;
@@ -39,14 +37,13 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static com.almi.pgs.commons.Constants.RECEIVE_BUFFER_SIZE;
-import static com.almi.pgs.commons.Constants.SEND_BUFFER_SIZE;
-import static com.almi.pgs.commons.Constants.SILENT_MODE;
+import static com.almi.pgs.commons.Constants.*;
 
 /**
  * Created by Almi on 2016-12-10.
@@ -82,6 +79,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
         packetManager.addPacketListener(new ClientGamePacketListener(this));
         packetManager.addPacketListener(new ClientLogoutPacketListener(this));
         packetManager.addPacketListener(new ClientGameTickListener(this));
+		packetManager.addPacketListener(new PlayerTeleportListener());
     }
 
     @Override
@@ -132,11 +130,23 @@ public class GameClient extends SimpleApplication implements ScreenController {
         inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_D));
 		inputManager.addMapping("Forward",  new KeyTrigger(KeyInput.KEY_W));
 		inputManager.addMapping("Backward",  new KeyTrigger(KeyInput.KEY_S));
-        inputManager.addMapping("Rotate", new KeyTrigger(KeyInput.KEY_SPACE), new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("Space", new KeyTrigger(KeyInput.KEY_SPACE));
         // Add the names to the action listener.
         inputManager.addListener(actionListener,"Pause");
-        inputManager.addListener(analogListener, "Login", "Left", "Right", "Left", "Forward", "Backward");
+        inputManager.addListener(analogListener, "Login", "Left", "Right", "Left", "Forward", "Backward", "Space");
 
+        inputManager.addMapping("RotateX", new MouseAxisTrigger(MouseInput.AXIS_X, true));
+        inputManager.addMapping("RotateY", new MouseAxisTrigger(MouseInput.AXIS_Y, true));
+        inputManager.addMapping("RotateX_negative", new MouseAxisTrigger(MouseInput.AXIS_X, false));
+        inputManager.addMapping("RotateY_negative", new MouseAxisTrigger(MouseInput.AXIS_Y, false));
+
+
+        inputManager.addListener((AnalogListener) (name, value, tpf) -> {
+
+            if("RotateX".equals(name) || "RotateX_negative".equals(name) || "RotateY".equals(name) || "RotateY_negative".equals(name)) {
+                senderThread.action();
+            }
+        }, "RotateX", "RotateX_negative", "RotateY", "RotateY_negative");
     }
 
     private ActionListener actionListener = (name, keyPressed, tpf) -> {
@@ -145,10 +155,35 @@ public class GameClient extends SimpleApplication implements ScreenController {
         }
     };
 
-    private AnalogListener analogListener = (name, value, tpf) -> {
-        if (isRunning) {
-            senderThread.action();
+    private AnalogListener analogListener = new AnalogListener() {
+        public void onAnalog(String name, float value, float tpf) {
+            if (isRunning) {
+                if (name.equals("Space")) {
+					shoot();
+                }
+                senderThread.action();
+            }
         }
+
+		private void shoot() {
+            CollisionResults results = new CollisionResults();
+            Ray ray = new Ray(cam.getLocation(), cam.getDirection());
+            rootNode.collideWith(ray, results);
+            System.out.println("----- Collisions? " + results.size() + "-----");
+            for (int i = 0; i < results.size(); i++) {
+                float dist = results.getCollision(i).getDistance();
+                Vector3f pt = results.getCollision(i).getContactPoint();
+                String hit = results.getCollision(i).getGeometry().getName();
+                System.out.println("* Collision #" + i);
+                System.out.println("  You shot " + hit + " at " + pt + ", " + dist + " wu away.");
+            }
+            if (results.size() > 0) {
+                CollisionResult closest = results.getClosestCollision();
+                byte victimId = (byte) Integer.parseInt(closest.getGeometry().getName());
+                packetManager.sendPacket(server, new ShootPacket(player.getPlayerId(), victimId));
+
+            }
+		}
     };
 
     @Override
@@ -237,6 +272,10 @@ public class GameClient extends SimpleApplication implements ScreenController {
         void action() {
             if(isRunning) {
                 Vector3f redTranslation = cam.getLocation();
+
+				redTranslation.y = -5f;
+				cam.setLocation(redTranslation);
+
                 Quaternion redRotation = cam.getRotation();
                 GamePacket movementPacket = new GamePacket(redTranslation.getX(),
                         redTranslation.getY(),
@@ -245,26 +284,30 @@ public class GameClient extends SimpleApplication implements ScreenController {
                         redRotation.getX(),
                         redRotation.getY(),
                         redRotation.getZ());
-                movementPacket.setPlayerID(player.getPlayerId());
-                movementPacket.setTeam(player.getTeam());
+                if(player != null) {
+                    movementPacket.setPlayerID(player.getPlayerId());
+                    movementPacket.setTeam(player.getTeam());
+                }
                 movementPacket.setCurrentTime(new Date().getTime());
                 if(!SILENT_MODE) {
                     log.info("Sending = " + movementPacket);
                 }
                 packetManager.sendPacket(server, movementPacket);
-				switch(player.getTeam()) {
-					case 0:
-						if (redTranslation.z > 100) {
-							log.info("WINNER");
-							sendFlagPacket();
-						}
+                if(player != null) {
+                    switch (player.getTeam()) {
+                        case 0:
+                            if (redTranslation.z > 100) {
+                                log.info("WINNER");
+                                sendFlagPacket();
+                            }
 
-					case 1:
-						if (redTranslation.z < -100) {
-							log.info("WINNER");
-							sendFlagPacket();
-						}
-				}
+                        case 1:
+                            if (redTranslation.z < -100) {
+                                log.info("WINNER");
+                                sendFlagPacket();
+                            }
+                    }
+                }
             }
         }
     }
@@ -273,6 +316,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
 		PlayerTakeFlagPacket packet = new PlayerTakeFlagPacket();
 		packet.setPlayerId(player.getPlayerId());
 		packetManager.sendPacket(server, packet);
+		isRunning = false;
 	}
 
     @Override
@@ -300,7 +344,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
                 flyCam.setEnabled(isRunning);
                 if(gameState.getIsRunning() == 1) {
                     int mins = gameState.getRemainingTime() / 6000;
-                    int sec = gameState.getRemainingTime() % 6000;
+                    int sec = (gameState.getRemainingTime() % 6000);
 
                     gameState.getPositionMap().entrySet().stream().filter(playerPosition -> players.containsKey(playerPosition.getKey())).forEach(playerPosition -> {
                         client.enqueue(() -> {
@@ -344,6 +388,23 @@ public class GameClient extends SimpleApplication implements ScreenController {
         @Override
         public Class<? extends Packet> packetClass() {
             return GameState.class;
+        }
+    }
+
+	private class PlayerTeleportListener implements PacketListener {
+
+        private boolean isWinnerDisplayed = true;
+
+        @Override
+        public void handlePacket(Packet gamePacket) {
+            PlayerTeleportPacket pt = (PlayerTeleportPacket) gamePacket;
+			cam.setLocation(new Vector3f(0f, -5f, player.getTeam() == 0 ? -110 : 110));
+			cam.lookAt(new Vector3f(0f, -5f, 0f), new Vector3f(0f, 1f, 0f));
+        }
+
+        @Override
+        public Class<? extends Packet> packetClass() {
+			return PlayerTeleportPacket.class;
         }
     }
 
@@ -417,7 +478,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
             if(packet != null) {
                 GamePacket gamePacket = (GamePacket) packet;
 //                log.info("Packet = " + gamePacket);
-                if(player.getPlayerId() != 1 && player.getPlayerId() != 0) {
+                if (player.getPlayerId() != 1 && player.getPlayerId() != 0) {
                     log.info("PID = " + player.getPlayerId());
                 }
                 if (player.getPlayerId() != gamePacket.getPlayerID()) {
@@ -426,14 +487,14 @@ public class GameClient extends SimpleApplication implements ScreenController {
                         player = new Player(gamePacket);
                         Geometry g = getNewPlayerGeometry(player.getPlayerId(), player.getTeam());
                         player.setGeometry(g);
-                        client.enqueue(()-> rootNode.attachChild(g));
+                        client.enqueue(() -> rootNode.attachChild(g));
                         players.put(player.getPlayerId(), player);
                     }
-                    if(gamePacket.getCurrentTime() >= player.getPacketTime()) {
+                    if (gamePacket.getCurrentTime() >= player.getPacketTime()) {
                         players.get(gamePacket.getPlayerID()).setPacketTime(gamePacket.getCurrentTime());
                         Player finalPlayer = player;
                         client.enqueue(() -> {
-                            Geometry g = (Geometry) rootNode.getChild("Player"+ finalPlayer.getPlayerId());
+                            Geometry g = (Geometry) rootNode.getChild("Player" + finalPlayer.getPlayerId());
                             g.setLocalTranslation(gamePacket.getX(), gamePacket.getY(), gamePacket.getZ());
                             g.setLocalRotation(
                                     new Quaternion(gamePacket.getxAngle(),
@@ -443,11 +504,10 @@ public class GameClient extends SimpleApplication implements ScreenController {
                             //                            players.get(gamePacket.getPlayerID()).setNewGamePacket(gamePacket);
                             return null;
                         });
-
                     }
                 }
             }
-        }
+		}
 
         @Override
         public Class<? extends Packet> packetClass() {
@@ -487,16 +547,13 @@ public class GameClient extends SimpleApplication implements ScreenController {
 
 	private Geometry getNewPlayerGeometry(byte playerID, byte team) {
 		Box box1 = new Box(1, 1, 1);
-		Geometry geometry = new Geometry("Box", box1);
+		Geometry geometry = new Geometry("Player"+playerID, box1);
 		geometry.setLocalTranslation(new Vector3f(1, -1, 1));
 		Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-		mat1.setColor("Color", team == 0 ?
+		mat1.setColor("Color", player.getTeam() == 0 ?
                 new ColorRGBA((float)(34/255.0), (float)(167/255.0),(float)(240/255.0), 1.0F) :
                 new ColorRGBA((float)(239/255.0), (float)(72/255.0), (float)(54/255.0), 1.0F));
-//                ColorRGBA.Blue : ColorRGBA.Red);
 		geometry.setMaterial(mat1);
-        geometry.setName("Player"+playerID);
-//		rootNode.attachChild(geometry);
 		return geometry;
 	}
 }

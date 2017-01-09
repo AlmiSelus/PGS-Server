@@ -63,7 +63,7 @@ public class GameServer implements Runnable {
         try {
             checkServerRunning();
             List<PlayerThread> socketsList = new CopyOnWriteArrayList<>();
-            ExecutorService executorService = Executors.newFixedThreadPool(maxPlayersNum);
+            ExecutorService executorService = Executors.newCachedThreadPool();
             ReliableServerSocket socket = new ReliableServerSocket(Constants.PORT);
             new Thread(() -> {
                 gameState = new Game(socketsList, packetManager);

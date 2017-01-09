@@ -4,6 +4,7 @@ import com.almi.pgs.game.packets.AuthResponsePacket;
 import com.almi.pgs.game.packets.GamePacket;
 import com.almi.pgs.game.packets.GenericResponse;
 import com.almi.pgs.game.PacketManager;
+import com.almi.pgs.game.packets.PlayerTeleportPacket;
 import com.almi.pgs.germancoding.rudp.ReliableSocket;
 import java.math.BigInteger;
 import java.security.SecureRandom;
