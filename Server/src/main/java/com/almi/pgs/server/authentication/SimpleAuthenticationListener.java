@@ -10,6 +10,7 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 
 import com.almi.pgs.server.PlayerThread;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,15 +48,25 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
         authCorrect.setPlayerID(gamePacket.getPlayerID());
         authCorrect.setTeamID(gamePacket.getTeam());
 		authCorrect.setHash(this.hash);
-        packetManager.sendPacket(clientSocket, authCorrect);
-        packetManager.sendPacket(clientSocket, gamePacket);
+        try {
+            packetManager.sendPacket(clientSocket, authCorrect);
+            packetManager.sendPacket(clientSocket, gamePacket);
 //        new PlayerThread(clientSocket, playerID, packetManager).start();
-        packetManager.removePacketListener(0);
-        /**
-         * Notify all connected players that new user has joined.
-         */
-        clients.stream().filter(client -> client.getSocket() != clientSocket).forEach(client ->
-                packetManager.sendPacket(client.getSocket(), gamePacket));
+            packetManager.removePacketListener(0);
+            /**
+             * Notify all connected players that new user has joined.
+             */
+            clients.stream().filter(client -> client.getSocket() != clientSocket).forEach(client -> {
+                try {
+                    packetManager.sendPacket(client.getSocket(), gamePacket);
+                }catch (Exception e) {
+                    log.info(ExceptionUtils.getStackTrace(e));
+                }
+            });
+        } catch(Exception e) {
+            log.info(ExceptionUtils.getStackTrace(e));
+        }
+
     }
 
     @Override
@@ -63,7 +74,11 @@ public class SimpleAuthenticationListener implements AuthenticationListener {
         log.info("Authentication for user failed. Reason: " + reason);
         AuthResponsePacket failedPacket = new AuthResponsePacket((short) 403);
         failedPacket.setReason(reason);
-        packetManager.sendPacket(clientSocket, failedPacket);
+        try {
+            packetManager.sendPacket(clientSocket, failedPacket);
+        } catch (Exception e) {
+            log.info(ExceptionUtils.getStackTrace(e));
+        }
     }
 
 }

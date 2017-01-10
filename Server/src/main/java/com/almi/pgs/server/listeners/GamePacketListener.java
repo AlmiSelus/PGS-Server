@@ -51,8 +51,12 @@ public class GamePacketListener implements PacketListener {
             gameState.getRotationMap().put(player.getPlayerID(), player.getRotation());
 
         } catch (Exception ex) {
-            packetManager.sendPacket(clientSocket, new LogoutPacket(new Date().getTime(), player.getPlayerID()));
-            log.info(ExceptionUtils.getStackTrace(ex));
+            try {
+                log.info(ExceptionUtils.getStackTrace(ex));
+                packetManager.sendPacket(clientSocket, new LogoutPacket(new Date().getTime(), player.getPlayerID()));
+            } catch (Exception e) {
+                log.info(ExceptionUtils.getStackTrace(e));
+            }
         }
     }
     @Override

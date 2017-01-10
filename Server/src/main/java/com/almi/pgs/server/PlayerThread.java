@@ -143,7 +143,11 @@ public class PlayerThread extends Thread {
                 playerThreads.remove(playerThread);
                 log.info("Sending logout info to all players");
                 for (PlayerThread client : playerThreads) {
-                    packetManager.sendPacket(client.getSocket(), new LogoutPacket(new Date().getTime(), playerID));
+                    try {
+                        packetManager.sendPacket(client.getSocket(), new LogoutPacket(new Date().getTime(), playerID));
+                    } catch (Exception ex) {
+                        log.info(ExceptionUtils.getStackTrace(ex));
+                    }
                 }
                 interrupt();
             }
@@ -170,7 +174,11 @@ public class PlayerThread extends Thread {
 			ShootPacket packet = (ShootPacket) gamePacket;
 			for (PlayerThread client : playerThreads) {
 				if (client.getPlayerID() == packet.getVictimId()) {
-					packetManager.sendPacket(client.getSocket(), new PlayerTeleportPacket());
+                    try {
+                        packetManager.sendPacket(client.getSocket(), new PlayerTeleportPacket());
+                    } catch (Exception e) {
+                        log.info(ExceptionUtils.getStackTrace(e));
+                    }
 				}
 			}
 		}

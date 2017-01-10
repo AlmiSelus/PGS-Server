@@ -95,13 +95,12 @@ public class GameClient extends SimpleApplication implements ScreenController {
             server = new ReliableSocket();
             server.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
             server.setSendBufferSize(SEND_BUFFER_SIZE);
+            server.setSoTimeout(1000);
             server.connect(new InetSocketAddress("127.0.0.1", Constants.PORT));
 
         } catch (IOException e) {
             log.error(ExceptionUtils.getStackTrace(e));
         }
-        new ReceiverThread().start();
-        senderThread.start();
 
         niftyDisplay = new NiftyJmeDisplay(assetManager,
                 inputManager,
@@ -114,7 +113,9 @@ public class GameClient extends SimpleApplication implements ScreenController {
         guiViewPort.addProcessor(niftyDisplay);
         flyCam.setDragToRotate(true);
 
-        popup = nifty.createPopup("popup");
+
+        new ReceiverThread().start();
+        senderThread.start();
     }
 
     @Override
@@ -141,13 +142,16 @@ public class GameClient extends SimpleApplication implements ScreenController {
         inputManager.addMapping("RotateY_negative", new MouseAxisTrigger(MouseInput.AXIS_Y, false));
 
 
-        inputManager.addListener((AnalogListener) (name, value, tpf) -> {
+        inputManager.addListener(mouseListener, "RotateX", "RotateX_negative", "RotateY", "RotateY_negative");
+    }
 
-            if("RotateX".equals(name) || "RotateX_negative".equals(name) || "RotateY".equals(name) || "RotateY_negative".equals(name)) {
+    private AnalogListener mouseListener = (AnalogListener) (name, value, tpf) -> {
+        if(server.isConnected()) {
+            if ("RotateX".equals(name) || "RotateX_negative".equals(name) || "RotateY".equals(name) || "RotateY_negative".equals(name)) {
                 senderThread.action();
             }
-        }, "RotateX", "RotateX_negative", "RotateY", "RotateY_negative");
-    }
+        }
+    };
 
     private ActionListener actionListener = (name, keyPressed, tpf) -> {
         if (name.equals("Pause") && !keyPressed) {
@@ -180,7 +184,11 @@ public class GameClient extends SimpleApplication implements ScreenController {
             if (results.size() > 0) {
                 CollisionResult closest = results.getClosestCollision();
                 byte victimId = (byte) Integer.parseInt(closest.getGeometry().getName());
-                packetManager.sendPacket(server, new ShootPacket(player.getPlayerId(), victimId));
+                try {
+                    packetManager.sendPacket(server, new ShootPacket(player.getPlayerId(), victimId));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
             }
 		}
@@ -209,9 +217,19 @@ public class GameClient extends SimpleApplication implements ScreenController {
         log.info("Login = " + login);
         log.info("Password = " + password);
         AuthPacket authPacket = new AuthPacket(login, password);
-        packetManager.sendPacket(server, authPacket);
+        try {
+            packetManager.sendPacket(server, authPacket);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         log.info("Packet sent");
+    }
 
+    public void dismiss() {
+        log.info("Test in dismiss");
+        if(popup != null) {
+            nifty.closePopup(popup.getId());
+        }
     }
 
     private class ReceiverThread extends Thread {
@@ -222,39 +240,47 @@ public class GameClient extends SimpleApplication implements ScreenController {
         @Override
         public void run() {
             try {
-                InputStream is = server.getInputStream();
-                log.info("In here");
-                while(true) {
-                    receive(is);
-                }
-            } catch (Exception e) {
-                //TODO server disconnected ... notify user on this.
-                log.info(ExceptionUtils.getStackTrace(e));
-            }
-        }
 
-        private void receive(InputStream is) throws Exception {
-            while(true) {
-                String packetString = "";
-                boolean end = false;
+                if (server.isConnected()) {
+                    InputStream is = server.getInputStream();
+//                    log.info("In here");
+                    while (server.isConnected()) {
+//                        log.info("Test in receiver");
+                        String packetString = "";
+                        boolean end = false;
 
-                while(!end) {
-                    byte[] buffer = new byte[1024];
-                    int c = is.read(buffer);
-                    packetString += new String(buffer, 0, c);
-                    if(packetString.contains("}**")) {
-                        end = true;
+                        while (!end && server.isConnected()) {
+                            byte[] buffer = new byte[1024];
+                            int c = is.read(buffer);
+                            if (server.isClosed()) {
+//                                log.info("In here");
+                                throw new Exception("Socket closed");
+                            }
+                            packetString += new String(buffer, 0, c);
+                            if (packetString.contains("}**")) {
+                                end = true;
+                            }
+                        }
+
+
+                        Packet packet = packetManager.getGeneralGamePacket(packetString);
+                        if (!SILENT_MODE) {
+                            log.info(Objects.isNull(packet) + "");
+                        }
+
+                        if (packet != null) {
+                            packetManager.handlePacket(packet);
+                        }
                     }
                 }
-
-                Packet packet = packetManager.getGeneralGamePacket(packetString);
-                if(!SILENT_MODE) {
-                    log.info(Objects.isNull(packet) + "");
-                }
-
-                if (packet != null) {
-                    packetManager.handlePacket(packet);
-                }
+            } catch(Exception e){
+                popup = nifty.createPopup("popup");
+                popup.findElementByName("issue").getRenderer(TextRenderer.class).setText("Connection error");
+//                popup.show();
+//                inputManager.removeListener(mouseListener);
+                nifty.showPopup(nifty.getCurrentScreen(), popup.getId(), popup.findElementByName("BtYes"));
+                isRunning = false;
+                log.info(ExceptionUtils.getStackTrace(e));
             }
         }
     }
@@ -271,6 +297,8 @@ public class GameClient extends SimpleApplication implements ScreenController {
 
         void action() {
             if(isRunning) {
+//                log.info("Test in sender");
+//                log.info("Is Connected = " + server.isConnected());
                 Vector3f redTranslation = cam.getLocation();
 
 				redTranslation.y = -5f;
@@ -292,7 +320,13 @@ public class GameClient extends SimpleApplication implements ScreenController {
                 if(!SILENT_MODE) {
                     log.info("Sending = " + movementPacket);
                 }
-                packetManager.sendPacket(server, movementPacket);
+                try {
+                    if(!server.isClosed()) {
+                        packetManager.sendPacket(server, movementPacket);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 if(player != null) {
                     switch (player.getTeam()) {
                         case 0:
@@ -300,12 +334,13 @@ public class GameClient extends SimpleApplication implements ScreenController {
                                 log.info("WINNER");
                                 sendFlagPacket();
                             }
-
+                        break;
                         case 1:
                             if (redTranslation.z < -100) {
                                 log.info("WINNER");
                                 sendFlagPacket();
                             }
+                        break;
                     }
                 }
             }
@@ -315,14 +350,22 @@ public class GameClient extends SimpleApplication implements ScreenController {
 	private void sendFlagPacket() {
 		PlayerTakeFlagPacket packet = new PlayerTakeFlagPacket();
 		packet.setPlayerId(player.getPlayerId());
-		packetManager.sendPacket(server, packet);
-		isRunning = false;
+        try {
+            packetManager.sendPacket(server, packet);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        isRunning = false;
 	}
 
     @Override
     public void destroy() {
-        if(player != null) {
-            packetManager.sendPacket(server, new LogoutPacket(new Date().getTime(), player.getPlayerId()));
+        if(player != null && server.isConnected()) {
+            try {
+                packetManager.sendPacket(server, new LogoutPacket(new Date().getTime(), player.getPlayerId()));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         super.destroy();
     }
@@ -451,6 +494,8 @@ public class GameClient extends SimpleApplication implements ScreenController {
                     isRunning = true;
                     nifty.gotoScreen("hud");
                 } else {
+
+                    popup = nifty.createPopup("popup");
                     popup.findElementByName("issue").getRenderer(TextRenderer.class).setText(authResponse.getReason());
                     nifty.showPopup(nifty.getCurrentScreen(), popup.getId(), null);
 

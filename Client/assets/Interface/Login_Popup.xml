@@ -58,11 +58,11 @@
         <panel width="80%" height="25%" align="center" valign="center" childLayout="vertical" backgroundColor="#55a5" padding="10">
             <panel width="*" />
             <text text="" id="issue" font="Interface/Fonts/Default.fnt" width="100%" height="100%" wrap="true" />
-            <panel height="21px" childLayout="horizontal">
+            <panel height="21px" childLayout="horizontal" visibleToMouse="true">
                 <panel width="*" />
-                <control id="BtYes" name="button" label="Yes"/>
-                <panel width="*" />
-                <control id="BtNo" name="button" label="No"/>
+                <control id="BtYes" name="button" label="Yes" visibleToMouse="true">
+                    <interact onClick="dismiss()" />
+                </control>
                 <panel width="*" />
             </panel>
             <panel width="*" />

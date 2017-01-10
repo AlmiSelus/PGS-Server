@@ -30,7 +30,11 @@ public class LogoutPacketListener implements PacketListener {
         playerThread.getPlayerThreads().remove(playerThread);
         log.info("Sending logout info to all players");
         for (PlayerThread client : playerThread.getPlayerThreads()) {
-            packetManager.sendPacket(client.getSocket(), new LogoutPacket(new Date().getTime(), playerThread.getPlayerID()));
+            try {
+                packetManager.sendPacket(client.getSocket(), new LogoutPacket(new Date().getTime(), playerThread.getPlayerID()));
+            } catch (Exception e) {
+                log.info(ExceptionUtils.getStackTrace(e));
+            }
         }
         try {
             playerThread.getSocket().close();

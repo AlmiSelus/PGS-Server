@@ -93,8 +93,7 @@ public class PacketManager {
         }
     }
 
-    public void sendPacket(ReliableSocket clientSocket, Packet packet) {
-        try {
+    public void sendPacket(ReliableSocket clientSocket, Packet packet) throws Exception {
             BufferedOutputStream bos = new BufferedOutputStream(clientSocket.getOutputStream());
             String packetString = gson.toJson(packet, packetTypeToken.getType()) + "**";
             if(!SILENT_MODE) {
@@ -102,9 +101,6 @@ public class PacketManager {
 			}
             bos.write(packetString.getBytes());
             bos.flush();
-        } catch(Exception e) {
-            log.error(ExceptionUtils.getStackTrace(e));
-        }
     }
 
     public void removePacketListener(int i) {
