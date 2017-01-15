@@ -16,6 +16,10 @@ public class Player {
 
 	private Geometry geometry;
 
+	public Player(byte playerID) {
+		this.playerId = playerID;
+	}
+
 	public Player(byte playerId, byte team, int hash) {
 		this.playerId = playerId;
 		this.team = team;

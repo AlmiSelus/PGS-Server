@@ -95,7 +95,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
             server = new ReliableSocket();
             server.setReceiveBufferSize(RECEIVE_BUFFER_SIZE);
             server.setSendBufferSize(SEND_BUFFER_SIZE);
-            server.setSoTimeout(1000);
+//            server.setSoTimeout(1000);
             server.connect(new InetSocketAddress("127.0.0.1", Constants.PORT));
 
         } catch (IOException e) {
@@ -183,7 +183,7 @@ public class GameClient extends SimpleApplication implements ScreenController {
             }
             if (results.size() > 0) {
                 CollisionResult closest = results.getClosestCollision();
-                byte victimId = (byte) Integer.parseInt(closest.getGeometry().getName());
+                byte victimId = (byte) Integer.parseInt(closest.getGeometry().getName().replace("Player", ""));
                 try {
                     packetManager.sendPacket(server, new ShootPacket(player.getPlayerId(), victimId));
                 } catch (Exception e) {
@@ -252,10 +252,6 @@ public class GameClient extends SimpleApplication implements ScreenController {
                         while (!end && server.isConnected()) {
                             byte[] buffer = new byte[1024];
                             int c = is.read(buffer);
-                            if (server.isClosed()) {
-//                                log.info("In here");
-                                throw new Exception("Socket closed");
-                            }
                             packetString += new String(buffer, 0, c);
                             if (packetString.contains("}**")) {
                                 end = true;
@@ -388,6 +384,18 @@ public class GameClient extends SimpleApplication implements ScreenController {
                 if(gameState.getIsRunning() == 1) {
                     int mins = gameState.getRemainingTime() / 6000;
                     int sec = (gameState.getRemainingTime() % 6000);
+
+                    for(Map.Entry<Byte, Vector3f> v3f : gameState.getPositionMap().entrySet()) {
+                        Player p = players.get(v3f.getKey());
+                        if(p == null) {
+                            p = new Player(v3f.getKey());
+                            Geometry g = getNewPlayerGeometry(p.getPlayerId(), p.getTeam());
+                            p.setGeometry(g);
+                            client.enqueue(() -> rootNode.attachChild(g));
+                            players.put(p.getPlayerId(), p);
+                        }
+
+                    }
 
                     gameState.getPositionMap().entrySet().stream().filter(playerPosition -> players.containsKey(playerPosition.getKey())).forEach(playerPosition -> {
                         client.enqueue(() -> {
@@ -523,9 +531,9 @@ public class GameClient extends SimpleApplication implements ScreenController {
             if(packet != null) {
                 GamePacket gamePacket = (GamePacket) packet;
 //                log.info("Packet = " + gamePacket);
-                if (player.getPlayerId() != 1 && player.getPlayerId() != 0) {
+//                if (player.getPlayerId() != 1 && player.getPlayerId() != 0) {
                     log.info("PID = " + player.getPlayerId());
-                }
+//                }
                 if (player.getPlayerId() != gamePacket.getPlayerID()) {
                     Player player = players.get(gamePacket.getPlayerID());
                     if (player == null) {

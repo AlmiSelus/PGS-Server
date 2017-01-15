@@ -81,9 +81,9 @@ public class Game {
                     Vector3f enemyPos = userRot.getValue().normalize();
                     Vector3f relative = enemyPos.subtract(pos).normalizeLocal();
                     float dot = relative.dot(look);
-                    if(dot > threshold) {
+//                    if(dot > threshold) {
                         seenPlayers.add(userRot.getKey());
-                    }
+//                    }
                 }
             }
         }
