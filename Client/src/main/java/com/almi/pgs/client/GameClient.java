@@ -170,27 +170,32 @@ public class GameClient extends SimpleApplication implements ScreenController {
         }
 
 		private void shoot() {
-            CollisionResults results = new CollisionResults();
-            Ray ray = new Ray(cam.getLocation(), cam.getDirection());
-            rootNode.collideWith(ray, results);
-            System.out.println("----- Collisions? " + results.size() + "-----");
-            for (int i = 0; i < results.size(); i++) {
-                float dist = results.getCollision(i).getDistance();
-                Vector3f pt = results.getCollision(i).getContactPoint();
-                String hit = results.getCollision(i).getGeometry().getName();
-                System.out.println("* Collision #" + i);
-                System.out.println("  You shot " + hit + " at " + pt + ", " + dist + " wu away.");
-            }
-            if (results.size() > 0) {
-                CollisionResult closest = results.getClosestCollision();
-                byte victimId = (byte) Integer.parseInt(closest.getGeometry().getName().replace("Player", ""));
-                try {
-                    packetManager.sendPacket(server, new ShootPacket(player.getPlayerId(), victimId));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
 
-            }
+			try {
+				CollisionResults results = new CollisionResults();
+				Ray ray = new Ray(cam.getLocation(), cam.getDirection());
+				rootNode.collideWith(ray, results);
+				log.info("----- Collisions? " + results.size() + "-----");
+//				for (int i = 0; i < results.size(); i++) {
+//					float dist = results.getCollision(i).getDistance();
+//					Vector3f pt = results.getCollision(i).getContactPoint();
+//					String hit = results.getCollision(i).getGeometry().getName();
+//					log.info("* Collision #" + i);
+//					log.info("  You shot " + hit + " at " + pt + ", " + dist + " wu away.");
+//				}
+				if (results.size() > 0) {
+					CollisionResult closest = results.getClosestCollision();
+					String name = closest.getGeometry().getName();
+					String id = name.replace("Player", "");
+					byte victimId = (byte) Integer.parseInt(id);
+					log.info("  You shot " + name + " at " + closest.getContactPoint() + ", " + closest.getDistance() + " wu away.");
+
+					packetManager.sendPacket(server, new ShootPacket(player.getPlayerId(), victimId));
+
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
     };
 
